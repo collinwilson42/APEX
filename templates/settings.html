@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings & Configuration - MT5 Meta Agent V11</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/database.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header - EXACT MATCH TO OTHER PAGES -->
+        <div class="header">
+            <div class="header-left">
+                <button id="menuToggle" class="menu-toggle">
+                    <img src="{{ url_for('static', filename='img/dropdown_icon.png') }}" alt="Menu" class="dropdown-icon">
+                </button>
+                <h1>MT5 META AGENT <span class="version">V11</span></h1>
+            </div>
+            <div class="header-right">
+                <div id="agentStatus" class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span class="status-text" id="statusText">STOPPED</span>
+                    <img src="{{ url_for('static', filename='img/live_active.gif') }}" alt="LIVE" class="status-gif" id="statusGif" style="display: none;">
+                </div>
+                <button id="toggleAgent" class="btn btn-primary">START AGENT</button>
+            </div>
+        </div>
+
+        <!-- Dropdown Navigation Menu -->
+        <nav id="dropdownMenu" class="dropdown-menu">
+            <a href="/" class="menu-item">
+                <span class="menu-icon">⟢</span>
+                <span>Dashboard</span>
+            </a>
+            <a href="/chart-data" class="menu-item">
+                <span class="menu-icon">⟢</span>
+                <span>Database</span>
+            </a>
+            <a href="/profile-manager" class="menu-item">
+                <span class="menu-icon">⟢</span>
+                <span>Profile Manager</span>
+            </a>
+            <a href="/api-skills" class="menu-item">
+                <span class="menu-icon">⟢</span>
+                <span>API Skills Manager</span>
+            </a>
+            <a href="/backtest-results" class="menu-item">
+                <span class="menu-icon">⟢</span>
+                <span>Backtest Results</span>
+            </a>
+            <a href="/settings" class="menu-item active">
+                <span class="menu-icon">⟢</span>
+                <span>Settings</span>
+            </a>
+        </nav>
+
+        <!-- Main Content Area -->
+        <div id="mainContent" class="main-content">
+            
+            <!-- Settings Hero Panel - V2.032 ENHANCED -->
+            <div class="intelligence-hero">
+                <div class="hero-left">
+                    <div class="hero-title-section">
+                        <div class="hero-title-row">
+                            <h2>SETTINGS & CONFIGURATION</h2>
+                        </div>
+                        <p class="hero-subtitle">System Parameters & User Preferences | V11.2</p>
+                    </div>
+                </div>
+                <div class="hero-right">
+                    <!-- Existing Export/Import -->
+                    <button class="settings-action-btn" id="exportConfig" title="Export Configuration">
+                        <img src="{{ url_for('static', filename='img/exports.png') }}" alt="Export">
+                        <span>EXPORT</span>
+                    </button>
+                    <button class="settings-action-btn" id="importConfig" title="Import Configuration">
+                        <img src="{{ url_for('static', filename='img/imports.png') }}" alt="Import">
+                        <span>IMPORT</span>
+                    </button>
+                    
+                    <!-- V2.032: NEW Save Button -->
+                    <button class="settings-action-btn" id="saveConfigHero" title="Save Current Settings">
+                        <img src="{{ url_for('static', filename='img/save.png') }}" alt="Save">
+                        <span>SAVE</span>
+                    </button>
+                    
+                    <!-- V2.032: NEW Profiles Dropdown -->
+                    <div class="profile-dropdown-container">
+                        <button class="settings-action-btn" id="profilesDropdown" title="Profile Management">
+                            <img src="{{ url_for('static', filename='img/settings.png') }}" alt="Profiles">
+                            <span>PROFILES</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="profile-dropdown-menu" id="profileMenu">
+                            <div class="profile-create-option" id="createProfileBtn">
+                                <span class="create-icon">+</span>
+                                Create New Profile
+                            </div>
+                            <div class="profile-divider"></div>
+                            <div class="profile-list" id="profileList">
+                                <!-- Dynamically populated by JavaScript -->
+                                <div class="profile-item active" data-profile-id="default">
+                                    <span>Default</span>
+                                    <span class="profile-badge">ACTIVE</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tier Tabs -->
+            <div class="tier-tabs">
+                <button class="tier-tab active" data-tier="1">
+                    ESSENTIAL
+                    <span class="tier-badge">Tier 1</span>
+                </button>
+                <button class="tier-tab" data-tier="2">
+                    INTERMEDIATE
+                    <span class="tier-badge">Tier 2</span>
+                </button>
+                <button class="tier-tab" data-tier="3">
+                    ADVANCED
+                    <span class="tier-badge">Tier 3</span>
+                </button>
+                <button class="tier-tab" data-tier="4">
+                    EXPERT
+                    <span class="tier-badge">Tier 4</span>
+                </button>
+            </div>
+
+            <!-- Settings Container -->
+            <div class="settings-container">
+                
+                <!-- TIER 1: ESSENTIAL SETTINGS -->
+                <div class="tier-content active" id="tier1">
+                    
+                    <!-- Display Settings Section -->
+                    <div class="settings-section">
+                        <div class="section-header">
+                            <h3>DISPLAY SETTINGS</h3>
+                            <button class="section-collapse" data-section="display">
+                                <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Collapse" class="section-extendo" data-state="up">
+                            </button>
+                        </div>
+                        <div class="section-body" id="display-settings">
+                            <div class="settings-grid">
+                                
+                                <div class="setting-item">
+                                    <label for="user_view_rows">User View Rows (Partial)</label>
+                                    <div class="setting-description">Number of table rows visible in partial view</div>
+                                    <div class="input-group">
+                                        <input type="number" id="user_view_rows" class="setting-input" 
+                                               min="5" max="50" value="10">
+                                        <span class="input-range">5 - 50</span>
+                                    </div>
+                                    <div class="setting-footer">
+                                        <span class="default-value">Default: 10</span>
+                                        <button class="reset-btn" data-key="user_view_rows">Reset</button>
+                                    </div>
+                                </div>
+
+                                <div class="setting-item">
+                                    <label for="api_view_rows_15m">API View Rows (15m)</label>
+                                    <div class="setting-description">Bars API can see per evaluation on 15m timeframe</div>
+                                    <div class="input-group">
+                                        <input type="number" id="api_view_rows_15m" class="setting-input" 
+                                               min="50" max="500" value="100">
+                                        <span class="input-range">50 - 500</span>
+                                    </div>
+                                    <div class="setting-footer">
+                                        <span class="default-value">Default: 100</span>
+                                        <button class="reset-btn" data-key="api_view_rows_15m">Reset</button>
+                                    </div>
+                                </div>
+
+                                <div class="setting-item">
+                                    <label for="api_view_rows_1m">API View Rows (1m)</label>
+                                    <div class="setting-description">Bars API can see per evaluation on 1m timeframe</div>
+                                    <div class="input-group">
+                                        <input type="number" id="api_view_rows_1m" class="setting-input" 
+                                               min="100" max="1000" value="200">
+                                        <span class="input-range">100 - 1000</span>
+                                    </div>
+                                    <div class="setting-footer">
+                                        <span class="default-value">Default: 200</span>
+                                        <button class="reset-btn" data-key="api_view_rows_1m">Reset</button>
+                                    </div>
+                                </div>
+
+                                <div class="setting-item">
+                                    <label for="auto_refresh">Auto-Refresh Tables</label>
+                                    <div class="setting-description">Automatically refresh data tables</div>
+                                    <div class="input-group">
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="auto_refresh" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="setting-footer">
+                                        <span class="default-value">Default: Enabled</span>
+                                        <button class="reset-btn" data-key="auto_refresh">Reset</button>
+                                    </div>
+                                </div>
+
+                                <div class="setting-item">
+                                    <label for="auto_refresh_interval">Refresh Interval</label>
+                                    <div class="setting-description">Seconds between automatic refreshes</div>
+                                    <div class="input-group">
+                                        <input type="range" id="auto_refresh_interval" class="setting-slider" 
+                                               min="5000" max="60000" step="5000" value="30000">
+                                        <span class="slider-value">30s</span>
+                                    </div>
+                                    <div class="setting-footer">
+                                        <span class="default-value">Default: 30 seconds</span>
+                                        <button class="reset-btn" data-key="auto_refresh_interval">Reset</button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Indicator Settings Section -->
+                    <div class="settings-section">
+                        <div class="section-header">
+                            <h3>INDICATOR SETTINGS</h3>
+                            <button class="section-collapse" data-section="indicators">
+                                <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Collapse" class="section-extendo" data-state="up">
+                            </button>
+                        </div>
+                        <div class="section-body" id="indicators-settings">
+                            <div class="settings-grid">
+                                
+                                <div class="setting-item">
+                                    <label for="atr_period">ATR Period</label>
+                                    <div class="setting-description">Average True Range calculation period</div>
+                                    <div class="input-group">
+                                        <input type="number" id="atr_period" class="setting-input" 
+                                               min="5" max="50" value="14">
+                                        <span class="input-range">5 - 50</span>
+                                    </div>
+                                    <div class="setting-footer">
+                                        <span class="default-value">Default: 14 (Pine Script)</span>
+                                        <button class="reset-btn" data-key="atr_period">Reset</button>
+                                    </div>
+                                </div>
+
+                                <div class="setting-item">
+                                    <label for="atr_smoothing_period">ATR Smoothing Period</label>
+                                    <div class="setting-description">ATR average smoothing period</div>
+                                    <div class="input-group">
+                                        <input type="number" id="atr_smoothing_period" class="setting-input" 
+                                               min="20" max="100" value="50">
+                                        <span class="input-range">20 - 100</span>
+                                    </div>
+                                    <div class="setting-footer">
+                                        <span class="default-value">Default: 50</span>
+                                        <button class="reset-btn" data-key="atr_smoothing_period">Reset</button>
+                                    </div>
+                                </div>
+
+                                <div class="setting-item">
+                                    <label for="ema_short_period">EMA Short Period</label>
+                                    <div class="setting-description">Short-term EMA for trend detection</div>
+                                    <div class="input-group">
+                                        <input type="number" id="ema_short_period" class="setting-input" 
+                                               min="2" max="20" value="4">
+                                        <span class="input-range">2 - 20</span>
+                                    </div>
+                                    <div class="setting-footer">
+                                        <span class="default-value">Default: 4</span>
+                                        <button class="reset-btn" data-key="ema_short_period">Reset</button>
+                                    </div>
+                                </div>
+
+                                <div class="setting-item">
+                                    <label for="ema_medium_period">EMA Medium Period</label>
+                                    <div class="setting-description">Medium-term EMA for trend confirmation</div>
+                                    <div class="input-group">
+                                        <input type="number" id="ema_medium_period" class="setting-input" 
+                                               min="10" max="50" value="22">
+                                        <span class="input-range">10 - 50</span>
+                                    </div>
+                                    <div class="setting-footer">
+                                        <span class="default-value">Default: 22</span>
+                                        <button class="reset-btn" data-key="ema_medium_period">Reset</button>
+                                    </div>
+                                </div>
+
+                                <div class="setting-item">
+                                    <label for="ath_lookback_bars">ATH Lookback Bars</label>
+                                    <div class="setting-description">Period for all-time high calculation</div>
+                                    <div class="input-group">
+                                        <input type="number" id="ath_lookback_bars" class="setting-input" 
+                                               min="100" max="2000" value="500" step="50">
+                                        <span class="input-range">100 - 2000</span>
+                                    </div>
+                                    <div class="setting-footer">
+                                        <span class="default-value">Default: 500 bars (~3 weeks on 15m)</span>
+                                        <button class="reset-btn" data-key="ath_lookback_bars">Reset</button>
+                                    </div>
+                                </div>
+
+                                <div class="setting-item">
+                                    <label for="fib_lookback_bars">Fibonacci Lookback Bars</label>
+                                    <div class="setting-description">Period for Fibonacci swing high/low detection</div>
+                                    <div class="input-group">
+                                        <input type="number" id="fib_lookback_bars" class="setting-input" 
+                                               min="50" max="500" value="100">
+                                        <span class="input-range">50 - 500</span>
+                                    </div>
+                                    <div class="setting-footer">
+                                        <span class="default-value">Default: 100</span>
+                                        <button class="reset-btn" data-key="fib_lookback_bars">Reset</button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- TIER 2: INTERMEDIATE SETTINGS -->
+                <div class="tier-content" id="tier2">
+                    <div class="coming-soon">
+                        <h3>INTERMEDIATE SETTINGS</h3>
+                        <p>ATH thresholds, Fibonacci multipliers, and data retention settings</p>
+                        <p class="note">Coming in next implementation phase...</p>
+                    </div>
+                </div>
+
+                <!-- TIER 3: ADVANCED SETTINGS -->
+                <div class="tier-content" id="tier3">
+                    <div class="coming-soon">
+                        <h3>ADVANCED SETTINGS</h3>
+                        <p>Composite weights, percentile parameters, and optimization settings</p>
+                        <p class="note">Coming in next implementation phase...</p>
+                    </div>
+                </div>
+
+                <!-- TIER 4: EXPERT SETTINGS -->
+                <div class="tier-content" id="tier4">
+                    <div class="coming-soon">
+                        <h3>EXPERT SETTINGS</h3>
+                        <p>Database tuning, API training parameters, and ML hyperparameters</p>
+                        <p class="note">Coming in next implementation phase...</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="settings-actions">
+                <button class="btn btn-secondary" id="resetAll">
+                    RESET ALL TO DEFAULTS
+                </button>
+                <button class="btn btn-primary" id="saveSettings">
+                    SAVE CHANGES
+                </button>
+            </div>
+
+            <!-- Status Message -->
+            <div class="status-message" id="statusMessage" style="display: none;">
+                <span class="status-icon"></span>
+                <span class="status-text"></span>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div>MT5 Meta Agent V11 - Settings & Configuration</div>
+            <div>Last Saved: <span id="lastSaved">Never</span></div>
+            <div>Modified: <span id="modifiedCount">0</span> settings</div>
+        </div>
+    </div>
+
+    <!-- V2.033: Profile Creation Modal -->
+    <div class="modal-overlay" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                CREATE NEW PROFILE
+            </div>
+            <div class="modal-body">
+                <label class="modal-label" for="profileName">Profile Name:</label>
+                <input type="text" 
+                       id="profileName" 
+                       class="modal-input" 
+                       placeholder="Enter profile name..."
+                       maxlength="50">
+                <div class="modal-description">
+                    This profile will save your current settings without affecting the active configuration.
+                </div>
+                <div class="modal-error" id="profileError">
+                    <!-- Error messages displayed here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-cancel" id="cancelProfileBtn">
+                    CANCEL
+                </button>
+                <button class="modal-btn modal-btn-create" id="confirmCreateBtn">
+                    CREATE PROFILE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3-Ring Base Model | MT5 META AGENT</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #F2F3F4;
+            color: #0A2540;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #topNav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(242, 243, 244, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #BB9847;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1000;
+        }
+
+        #dropdownIcon {
+            width: 40px;
+            height: 40px;
+            background: #F2F3F4;
+            border: 2px solid #BB9847;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 24px;
+            color: #BB9847;
+        }
+
+        #dropdownIcon:hover {
+            background: #BB9847;
+            color: #F2F3F4;
+            transform: scale(1.1);
+        }
+
+        #searchBar {
+            flex: 1;
+            margin: 0 20px;
+            height: 40px;
+            background: rgba(242, 243, 244, 0.9);
+            border: 1px solid #BB9847;
+            border-radius: 20px;
+            padding: 0 20px;
+            font-size: 14px;
+            color: #0A2540;
+        }
+
+        .info-badge {
+            padding: 8px 16px;
+            background: rgba(187, 152, 71, 0.2);
+            border: 1px solid #BB9847;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #BB9847;
+            font-weight: bold;
+        }
+
+        #dropdownMenu {
+            position: absolute;
+            top: 65px;
+            left: 20px;
+            background: #F2F3F4;
+            border: 2px solid #BB9847;
+            border-radius: 8px;
+            padding: 10px 0;
+            min-width: 200px;
+            box-shadow: 0 4px 15px rgba(187, 152, 71, 0.3);
+            display: none;
+            z-index: 1001;
+        }
+
+        .dropdown-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #0A2540;
+            text-decoration: none;
+            display: block;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(187, 152, 71, 0.2);
+        }
+
+        #mainCanvas {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #F2F3F4;
+        }
+
+        #radialPlot {
+            width: 100%;
+            height: 100%;
+        }
+
+        #legendPanel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(242, 243, 244, 0.95);
+            border: 2px solid #BB9847;
+            border-radius: 12px;
+            padding: 20px;
+            min-width: 280px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 900;
+        }
+
+        .legend-title {
+            font-weight: bold;
+            color: #BB9847;
+            margin-bottom: 15px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #0A2540;
+        }
+
+        .legend-label {
+            font-size: 13px;
+            color: #0A2540;
+        }
+
+        .legend-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(187, 152, 71, 0.3);
+        }
+
+        .ring-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px;
+            border-radius: 6px;
+            background: rgba(10, 37, 64, 0.03);
+            transition: all 0.2s;
+        }
+
+        .ring-item:hover {
+            background: rgba(187, 152, 71, 0.1);
+            transform: translateX(3px);
+        }
+
+        .ring-name {
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .ring-badge {
+            background: rgba(10, 37, 64, 0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            color: #BB9847;
+        }
+
+        .simplicity-note {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid #4CAF50;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .simplicity-title {
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="topNav">
+        <div id="dropdownIcon" onclick="toggleDropdown()">☰</div>
+        <input type="text" id="searchBar" placeholder="Search nodes..." onkeyup="searchNodes(this.value)">
+        <div class="info-badge" id="nodeCount">0 nodes</div>
+    </div>
+
+    <div id="dropdownMenu">
+        <a href="/chart-data" class="dropdown-item">📊 Intelligence Database</a>
+        <a href="/tunity" class="dropdown-item">🎛️ TUNITY Control Panel</a>
+        <a href="/fingerprint" class="dropdown-item">🎯 Fingerprint System</a>
+        <div style="border-top: 1px solid rgba(187, 152, 71, 0.3); margin: 5px 0;"></div>
+        <a href="#" class="dropdown-item" onclick="exportData()">💾 Export JSON</a>
+        <a href="#" class="dropdown-item" onclick="showInfo()">ℹ️ About 3-Ring System</a>
+    </div>
+
+    <div id="mainCanvas">
+        <div id="radialPlot"></div>
+    </div>
+
+    <div id="legendPanel">
+        <div class="legend-title">
+            <span>🎨</span>
+            <span>Domain Colors</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #2196F3;"></div>
+            <span class="legend-label">EXECUTION</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #4CAF50;"></div>
+            <span class="legend-label">INTENT</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #FFC107;"></div>
+            <span class="legend-label">RISK</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #F44336;"></div>
+            <span class="legend-label">META</span>
+        </div>
+
+        <div class="legend-section">
+            <div class="legend-title">
+                <span>📐</span>
+                <span>3-Ring Base Model</span>
+            </div>
+            <div id="ringsLegend"></div>
+        </div>
+
+        <div class="simplicity-note">
+            <div class="simplicity-title">✨ Simplified System</div>
+            <div>3 rings = 3 states of knowledge</div>
+            <div style="margin-top: 5px;">
+                <strong>✓</strong> Core Trusted<br>
+                <strong>?</strong> Testing/Validation<br>
+                <strong>×</strong> Experimental
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allNodes = [];
+        let allRings = [];
+        let filteredNodes = [];
+
+        const DOMAIN_COLORS = {
+            'EXECUTION': '#2196F3',
+            'INTENT': '#4CAF50',
+            'RISK': '#FFC107',
+            'META': '#F44336'
+        };
+
+        window.onload = function() {
+            loadData();
+        };
+
+        function toggleDropdown() {
+            const menu = document.getElementById('dropdownMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('dropdownMenu');
+            const icon = document.getElementById('dropdownIcon');
+            if (!dropdown.contains(e.target) && e.target !== icon) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        async function loadData() {
+            try {
+                const ringsResponse = await fetch('/api/fingerprint/rings');
+                const ringsData = await ringsResponse.json();
+                if (ringsData.success) {
+                    allRings = ringsData.data;
+                    renderRingsLegend();
+                }
+
+                const nodesResponse = await fetch('/api/fingerprint/nodes');
+                const nodesData = await nodesResponse.json();
+                if (nodesData.success) {
+                    allNodes = nodesData.data;
+                    filteredNodes = allNodes;
+                    updateNodeCount();
+                    renderPlot();
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        function renderRingsLegend() {
+            const container = document.getElementById('ringsLegend');
+            container.innerHTML = allRings.map(ring => `
+                <div class="ring-item">
+                    <div>
+                        <div class="ring-name" style="color: ${ring.hex_color};">
+                            ${ring.band_label}
+                        </div>
+                        <div style="font-size: 11px; color: rgba(10,37,64,0.6); margin-top: 2px;">
+                            Ring ${ring.ring_number} • F${ring.fibonacci_index}
+                        </div>
+                    </div>
+                    <div class="ring-badge">r=${ring.radius}</div>
+                </div>
+            `).join('');
+        }
+
+        function updateNodeCount() {
+            document.getElementById('nodeCount').textContent = `${filteredNodes.length} nodes`;
+        }
+
+        function searchNodes(query) {
+            if (!query) {
+                filteredNodes = allNodes;
+            } else {
+                const lower = query.toLowerCase();
+                filteredNodes = allNodes.filter(n => 
+                    n.node_code.toLowerCase().includes(lower) ||
+                    n.name.toLowerCase().includes(lower) ||
+                    n.domain.toLowerCase().includes(lower)
+                );
+            }
+            updateNodeCount();
+            renderPlot();
+        }
+
+        function renderPlot() {
+            // Ring traces
+            const ringTraces = allRings.map(ring => ({
+                type: 'scatterpolar',
+                mode: 'lines',
+                r: Array(361).fill(ring.radius),
+                theta: Array.from({length: 361}, (_, i) => i),
+                line: {
+                    color: ring.hex_color,
+                    width: 3
+                },
+                hoverinfo: 'skip',
+                showlegend: false
+            }));
+
+            // Node trace
+            const nodeTrace = {
+                type: 'scatterpolar',
+                mode: 'markers+text',
+                r: filteredNodes.map(n => n.radius),
+                theta: filteredNodes.map(n => n.angle_degrees),
+                text: filteredNodes.map(n => n.node_code),
+                textposition: 'top center',
+                textfont: {
+                    size: 10,
+                    color: '#0A2540',
+                    family: 'Segoe UI'
+                },
+                marker: {
+                    size: filteredNodes.map(n => 14 + (n.fingerprint_value * 10)),
+                    color: filteredNodes.map(n => DOMAIN_COLORS[n.domain]),
+                    opacity: filteredNodes.map(n => 0.75 + (n.fingerprint_value * 0.25)),
+                    line: {
+                        color: '#0A2540',
+                        width: 2
+                    }
+                },
+                hovertemplate: 
+                    '<b>%{customdata[0]}</b><br>' +
+                    '%{customdata[1]}<br>' +
+                    'Domain: %{customdata[2]}<br>' +
+                    'Fingerprint: %{customdata[3]:.2f}<br>' +
+                    'Ring: %{customdata[4]}<br>' +
+                    '<extra></extra>',
+                customdata: filteredNodes.map(n => [
+                    n.node_code,
+                    n.name,
+                    n.domain,
+                    n.fingerprint_value,
+                    n.band_label
+                ]),
+                showlegend: false
+            };
+
+            const data = [...ringTraces, nodeTrace];
+
+            const layout = {
+                polar: {
+                    bgcolor: 'rgba(242, 243, 244, 0.3)',
+                    radialaxis: {
+                        visible: true,
+                        range: [0, 25],
+                        gridcolor: 'rgba(187, 152, 71, 0.15)',
+                        tickfont: { color: '#BB9847', size: 11 },
+                        showline: false
+                    },
+                    angularaxis: {
+                        visible: true,
+                        gridcolor: 'rgba(187, 152, 71, 0.15)',
+                        tickfont: { color: '#BB9847', size: 11 },
+                        direction: 'clockwise',
+                        rotation: 90,
+                        showline: false
+                    }
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { family: 'Segoe UI', color: '#0A2540' },
+                margin: { l: 60, r: 60, t: 20, b: 60 },
+                hovermode: 'closest'
+            };
+
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['select2d', 'lasso2d']
+            };
+
+            Plotly.newPlot('radialPlot', data, layout, config);
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify({
+                system: '3-ring base model',
+                nodes: allNodes,
+                rings: allRings,
+                exported: new Date().toISOString()
+            }, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'fingerprint_3ring_base.json';
+            link.click();
+        }
+
+        function showInfo() {
+            alert(
+                '3-RING BASE MODEL\n\n' +
+                'Simplified from 6 rings to 3 rings.\n\n' +
+                'WHY:\n' +
+                '6 rings = claiming 6 levels of precision\n' +
+                '3 rings = honest about actual knowledge\n\n' +
+                'RINGS:\n' +
+                '• Ring 1 (r=2): CORE TRUSTED\n' +
+                '  Proven, reliable, production-ready\n\n' +
+                '• Ring 2 (r=8): TESTING\n' +
+                '  Shows promise, needs validation\n\n' +
+                '• Ring 3 (r=21): EXPERIMENTAL\n' +
+                '  Early stage, unproven\n\n' +
+                'This matches your actual ability to\n' +
+                'distinguish strategy confidence levels.\n\n' +
+                'The 6-ring system will come later with\n' +
+                'the unified potential server build.'
+            );
+        }
+
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>

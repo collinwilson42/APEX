@@ -1,0 +1,184 @@
+/* ============================================================================
+   SETTINGS.CSS - MASTER DATA CONTROLS + GRADIENT UPDATE
+   ============================================================================ */
+
+/* GRADIENT FIX: Change background to #111E2C → #171717 */
+.setting-item {
+    background: linear-gradient(135deg, #111E2C 0%, #171717 100%);  /* UPDATED GRADIENT */
+    border: 1px solid rgba(70, 130, 180, 0.3);
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.setting-item:hover {
+    border-color: rgba(70, 130, 180, 0.6);
+    box-shadow: 0 4px 12px rgba(70, 130, 180, 0.2);
+}
+
+/* Master Control Items - Enhanced styling */
+.master-control-item {
+    background: linear-gradient(135deg, #111E2C 0%, #171717 100%);  /* UPDATED GRADIENT */
+    border: 2px solid rgba(70, 130, 180, 0.5);
+    padding: 25px;
+}
+
+.master-control-item:hover {
+    border-color: rgba(70, 130, 180, 0.8);
+    box-shadow: 0 6px 16px rgba(70, 130, 180, 0.3);
+}
+
+/* Danger Zone Styling */
+.danger-zone {
+    border-color: rgba(220, 53, 69, 0.5) !important;
+    background: linear-gradient(135deg, #3d1a1a 0%, #171717 100%);  /* Red tint for danger */
+}
+
+.danger-zone:hover {
+    border-color: rgba(220, 53, 69, 0.8) !important;
+    box-shadow: 0 6px 16px rgba(220, 53, 69, 0.3);
+}
+
+.danger-text {
+    color: #ff6b6b !important;
+    font-weight: 600;
+}
+
+.warning-text {
+    color: #ffa500;
+    font-weight: 500;
+}
+
+/* Master Action Buttons */
+.master-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+}
+
+.master-action-btn img {
+    width: 20px;
+    height: 20px;
+    filter: brightness(0) invert(1);
+}
+
+/* Import Button - Blue/Steel theme */
+.import-btn {
+    background: linear-gradient(135deg, #4682b4 0%, #1e3a5f 100%);
+    color: white;
+}
+
+.import-btn:hover {
+    background: linear-gradient(135deg, #5a96d4 0%, #2a4a75 100%);
+    box-shadow: 0 4px 12px rgba(70, 130, 180, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Clear Button - Red/Danger theme */
+.clear-btn {
+    background: linear-gradient(135deg, #dc3545 0%, #8b0000 100%);
+    color: white;
+}
+
+.clear-btn:hover {
+    background: linear-gradient(135deg, #ff4556 0%, #a00000 100%);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    transform: translateY(-2px);
+}
+
+.clear-btn:active {
+    transform: translateY(0);
+}
+
+/* Input Group for Master Controls */
+.master-control-item .input-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.master-control-item .setting-input {
+    flex: 0 0 200px;
+    padding: 10px 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(70, 130, 180, 0.3);
+    border-radius: 6px;
+    color: white;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+}
+
+.master-control-item .setting-input:focus {
+    outline: none;
+    border-color: rgba(70, 130, 180, 0.8);
+    box-shadow: 0 0 8px rgba(70, 130, 180, 0.3);
+}
+
+/* Status Text */
+.status-text {
+    color: #87ceeb;
+    font-size: 13px;
+    font-style: italic;
+    margin-left: auto;
+}
+
+.status-text.success {
+    color: #5cb85c;
+}
+
+.status-text.error {
+    color: #ff6b6b;
+}
+
+.status-text.loading {
+    color: #ffa500;
+}
+
+/* Loading Spinner for Import */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.master-action-btn.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.master-action-btn.loading img {
+    animation: spin 1s linear infinite;
+}
+
+/* Section Body specific for Master Controls */
+#master-data-controls {
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .master-control-item .input-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .master-control-item .setting-input {
+        flex: 1;
+    }
+    
+    .master-action-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

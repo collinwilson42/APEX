@@ -1,0 +1,283 @@
+/* ============================================================================
+   IMPORT DATA MODAL DIALOG STYLES (V1.1)
+   Add to database.css
+   ============================================================================ */
+
+/* Import Button in Hero Panel */
+.import-data-btn {
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    border: 2px solid var(--gold-light);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    margin-left: 12px;
+}
+
+.import-data-btn:hover {
+    background: rgba(196, 177, 87, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 0 16px rgba(196, 177, 87, 0.6);
+}
+
+.import-icon {
+    width: 20px;
+    height: 20px;
+    filter: brightness(0) saturate(100%) invert(79%) sepia(18%) saturate(717%) hue-rotate(5deg) brightness(94%) contrast(87%);
+}
+
+/* Modal Overlay */
+.import-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.import-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+}
+
+/* Modal Content */
+.import-modal-content {
+    position: relative;
+    width: 500px;
+    background: linear-gradient(135deg, var(--navy-royal) 0%, #1A2E45 100%);
+    border: 2px solid var(--gold-light);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    z-index: 10000;
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal Header */
+.import-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(196, 177, 87, 0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.import-modal-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: 2px;
+    margin: 0;
+}
+
+.import-modal-close {
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--gold-light);
+    border-radius: 6px;
+    color: var(--gold-light);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.import-modal-close:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+/* Modal Body */
+.import-modal-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Input Groups */
+.import-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.import-input-group label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.import-input {
+    width: 100%;
+    height: 45px;
+    background: rgba(58, 95, 138, 0.2);
+    border: 1px solid var(--steel-blue);
+    border-radius: 6px;
+    padding: 0 16px;
+    color: var(--matte-white);
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.import-input:focus {
+    outline: none;
+    border-color: var(--gold-light);
+    box-shadow: 0 0 12px rgba(196, 177, 87, 0.3);
+    background: rgba(58, 95, 138, 0.3);
+}
+
+.import-help-text {
+    font-size: 11px;
+    color: var(--steel-blue);
+    font-style: italic;
+}
+
+/* Checkbox Group */
+.import-checkbox-group {
+    display: flex;
+    gap: 20px;
+}
+
+.import-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--matte-white);
+    font-size: 14px;
+}
+
+.import-checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--gold-light);
+}
+
+.import-warning {
+    color: #ef4444 !important;
+}
+
+.import-warning-text {
+    font-size: 11px;
+    color: #ef4444;
+    font-weight: 600;
+}
+
+/* Progress Bar */
+.import-progress {
+    margin-top: 12px;
+}
+
+.import-progress-bar {
+    width: 100%;
+    height: 24px;
+    background: rgba(58, 95, 138, 0.3);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--steel-blue);
+}
+
+.import-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold-dark) 0%, var(--gold-light) 100%);
+    width: 0%;
+    transition: width 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--matte-black);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.import-progress-text {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--matte-white);
+    text-align: center;
+}
+
+/* Modal Footer */
+.import-modal-footer {
+    padding: 20px 24px;
+    border-top: 1px solid rgba(196, 177, 87, 0.3);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.import-btn-cancel {
+    padding: 10px 24px;
+    background: transparent;
+    border: 1px solid var(--steel-blue);
+    border-radius: 6px;
+    color: var(--matte-white);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.import-btn-cancel:hover {
+    background: rgba(58, 95, 138, 0.2);
+    border-color: var(--gold-light);
+}
+
+.import-btn-start {
+    padding: 10px 32px;
+    background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold-light) 100%);
+    border: none;
+    border-radius: 6px;
+    color: var(--matte-black);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.import-btn-start:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(196, 177, 87, 0.4);
+}
+
+.import-btn-start:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}

@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Radial Nodebase | Fibonacci Framework</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #F2F3F4;
+            color: #0A2540;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Top Navigation Bar */
+        #topNav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(242, 243, 244, 0.85);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #BB9847;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1000;
+        }
+
+        #dropdownIcon {
+            width: 40px;
+            height: 40px;
+            background: #F2F3F4;
+            border: 2px solid #BB9847;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 24px;
+            color: #BB9847;
+        }
+
+        #dropdownIcon:hover {
+            background: #BB9847;
+            color: #F2F3F4;
+            transform: scale(1.1);
+        }
+
+        #searchBar {
+            flex: 1;
+            margin: 0 20px;
+            height: 40px;
+            background: rgba(242, 243, 244, 0.9);
+            border: 1px solid #BB9847;
+            border-radius: 20px;
+            padding: 0 20px;
+            font-size: 14px;
+            color: #0A2540;
+        }
+
+        #searchBar::placeholder {
+            color: rgba(10, 37, 64, 0.5);
+        }
+
+        /* Dropdown Menu */
+        #dropdownMenu {
+            position: absolute;
+            top: 65px;
+            left: 20px;
+            background: #F2F3F4;
+            border: 2px solid #BB9847;
+            border-radius: 8px;
+            padding: 10px 0;
+            min-width: 200px;
+            box-shadow: 0 4px 15px rgba(187, 152, 71, 0.3);
+            display: none;
+            z-index: 1001;
+        }
+
+        .dropdown-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #0A2540;
+            text-decoration: none;
+            display: block;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(187, 152, 71, 0.2);
+        }
+
+        /* Main Canvas */
+        #mainCanvas {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #F2F3F4;
+        }
+
+        #radialPlot {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Context Menu */
+        #contextMenu {
+            position: fixed;
+            background: #F2F3F4;
+            border: 2px solid #BB9847;
+            border-radius: 8px;
+            padding: 10px 0;
+            min-width: 180px;
+            box-shadow: 0 4px 15px rgba(187, 152, 71, 0.4);
+            display: none;
+            z-index: 2000;
+        }
+
+        .context-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .context-item:hover {
+            background: rgba(187, 152, 71, 0.2);
+        }
+
+        .context-icon {
+            width: 16px;
+            height: 16px;
+            color: #BB9847;
+        }
+
+        /* Control Panels */
+        .control-panel {
+            position: fixed;
+            background: rgba(242, 243, 244, 0.98);
+            border: 2px solid #BB9847;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            display: none;
+            z-index: 1500;
+            min-width: 400px;
+            min-height: 300px;
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+
+        .panel-header {
+            background: #0A2540;
+            color: #BB9847;
+            padding: 15px 20px;
+            border-radius: 10px 10px 0 0;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+
+        .panel-title {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .panel-close {
+            cursor: pointer;
+            font-size: 20px;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .panel-close:hover {
+            background: rgba(187, 152, 71, 0.2);
+        }
+
+        .panel-content {
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(90vh - 60px);
+        }
+
+        .resize-handle {
+            position: absolute;
+            background: transparent;
+        }
+
+        .resize-handle.nw { top: 0; left: 0; width: 15px; height: 15px; cursor: nw-resize; }
+        .resize-handle.ne { top: 0; right: 0; width: 15px; height: 15px; cursor: ne-resize; }
+        .resize-handle.sw { bottom: 0; left: 0; width: 15px; height: 15px; cursor: sw-resize; }
+        .resize-handle.se { bottom: 0; right: 0; width: 15px; height: 15px; cursor: se-resize; }
+
+        /* Input Controls */
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #0A2540;
+            font-size: 14px;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to right, #BB9847, #0A2540);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #BB9847;
+            cursor: pointer;
+            border: 2px solid #F2F3F4;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #BB9847;
+        }
+
+        .value-display {
+            min-width: 50px;
+            text-align: right;
+            color: #BB9847;
+            font-weight: bold;
+        }
+
+        select {
+            padding: 8px 12px;
+            background: rgba(10, 37, 64, 0.05);
+            border: 1px solid #BB9847;
+            border-radius: 6px;
+            color: #0A2540;
+            cursor: pointer;
+        }
+
+        .axis-control {
+            background: rgba(10, 37, 64, 0.03);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(187, 152, 71, 0.3);
+        }
+
+        .axis-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #BB9847;
+            font-size: 15px;
+        }
+
+        .color-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            border: 2px solid #BB9847;
+            cursor: pointer;
+        }
+
+        input[type="color"] {
+            width: 0;
+            height: 0;
+            border: none;
+            padding: 0;
+            opacity: 0;
+        }
+
+        /* Node Manager */
+        .node-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .node-item {
+            padding: 12px;
+            background: rgba(10, 37, 64, 0.03);
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(187, 152, 71, 0.3);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .node-item:hover {
+            background: rgba(187, 152, 71, 0.1);
+            border-color: #BB9847;
+            transform: translateX(5px);
+        }
+
+        .node-code {
+            font-weight: bold;
+            color: #BB9847;
+            margin-bottom: 4px;
+        }
+
+        .node-name {
+            color: #0A2540;
+            font-size: 13px;
+        }
+
+        .node-domain {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #BB9847;
+            color: #F2F3F4;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navigation -->
+    <div id="topNav">
+        <div id="dropdownIcon" onclick="toggleDropdown()">☰</div>
+        <input type="text" id="searchBar" placeholder="Search nodes (F2, F3, F4 bands)..." onkeyup="searchNodes(this.value)">
+    </div>
+
+    <!-- Dropdown Menu -->
+    <div id="dropdownMenu">
+        <a href="/chart-data" class="dropdown-item">📊 Intelligence Database</a>
+        <a href="/tunity" class="dropdown-item">🎛️ TUNITY Control Panel</a>
+        <a href="/fingerprint" class="dropdown-item">🎯 Fingerprint System</a>
+        <a href="#" class="dropdown-item" onclick="exportData()">💾 Export Data</a>
+        <a href="#" class="dropdown-item" onclick="refresh3DPrep()">🔮 3D Preview</a>
+    </div>
+
+    <!-- Main Canvas -->
+    <div id="mainCanvas">
+        <div id="radialPlot"></div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="contextMenu">
+        <div class="context-item" onclick="openPanel('nodeManager')">
+            <span class="context-icon">📋</span>
+            <span>Node Manager</span>
+        </div>
+        <div class="context-item" onclick="openPanel('inputs')">
+            <span class="context-icon">⚙️</span>
+            <span>Inputs</span>
+        </div>
+    </div>
+
+    <!-- Node Manager Panel -->
+    <div id="nodeManagerPanel" class="control-panel">
+        <div class="panel-header">
+            <span class="panel-title">📋 Node Manager</span>
+            <span class="panel-close" onclick="closePanel('nodeManager')">×</span>
+        </div>
+        <div class="panel-content">
+            <div class="control-group">
+                <label class="control-label">Filter by Domain</label>
+                <select id="domainFilter" onchange="loadNodes()">
+                    <option value="ALL">All Domains</option>
+                    <option value="EXECUTION">Execution</option>
+                    <option value="INTENT">Intent</option>
+                    <option value="RISK">Risk</option>
+                    <option value="META">Meta</option>
+                </select>
+            </div>
+            <div id="nodeList" class="node-list"></div>
+        </div>
+        <div class="resize-handle nw"></div>
+        <div class="resize-handle ne"></div>
+        <div class="resize-handle sw"></div>
+        <div class="resize-handle se"></div>
+    </div>
+
+    <!-- Inputs Panel -->
+    <div id="inputsPanel" class="control-panel">
+        <div class="panel-header">
+            <span class="panel-title">⚙️ Gradient & Heat Map Controls</span>
+            <span class="panel-close" onclick="closePanel('inputs')">×</span>
+        </div>
+        <div class="panel-content">
+            <!-- +Y Axis -->
+            <div class="axis-control">
+                <div class="axis-header">+Y Axis (North / 0°)</div>
+                <div class="control-row">
+                    <input type="checkbox" id="axis_y_enabled" checked onchange="updateVisualization()">
+                    <label>Enabled</label>
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">Start Color:</label>
+                    <div class="color-preview" id="y_color1_preview" onclick="document.getElementById('y_color1').click()"></div>
+                    <input type="color" id="y_color1" value="#4CAF50" onchange="updateColorPreview('y', 1)">
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">End Color:</label>
+                    <div class="color-preview" id="y_color2_preview" onclick="document.getElementById('y_color2').click()"></div>
+                    <input type="color" id="y_color2" value="#0A2540" onchange="updateColorPreview('y', 2)">
+                </div>
+                <div class="control-row">
+                    <input type="checkbox" id="axis_y_inverse" onchange="updateVisualization()">
+                    <label>Inverse Gradient</label>
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">Opacity:</label>
+                    <input type="range" id="axis_y_opacity" min="0" max="100" value="80" oninput="updateSliderValue('y_opacity', this.value)">
+                    <span class="value-display" id="y_opacity_value">80%</span>
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">Heat Blend:</label>
+                    <input type="range" id="axis_y_heat" min="0" max="100" value="50" oninput="updateSliderValue('y_heat', this.value)">
+                    <span class="value-display" id="y_heat_value">50%</span>
+                </div>
+            </div>
+
+            <!-- +X Axis -->
+            <div class="axis-control">
+                <div class="axis-header">+X Axis (East / 90°)</div>
+                <div class="control-row">
+                    <input type="checkbox" id="axis_x_enabled" checked onchange="updateVisualization()">
+                    <label>Enabled</label>
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">Start Color:</label>
+                    <div class="color-preview" id="x_color1_preview" onclick="document.getElementById('x_color1').click()"></div>
+                    <input type="color" id="x_color1" value="#2196F3" onchange="updateColorPreview('x', 1)">
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">End Color:</label>
+                    <div class="color-preview" id="x_color2_preview" onclick="document.getElementById('x_color2').click()"></div>
+                    <input type="color" id="x_color2" value="#0A2540" onchange="updateColorPreview('x', 2)">
+                </div>
+                <div class="control-row">
+                    <input type="checkbox" id="axis_x_inverse" onchange="updateVisualization()">
+                    <label>Inverse Gradient</label>
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">Opacity:</label>
+                    <input type="range" id="axis_x_opacity" min="0" max="100" value="80" oninput="updateSliderValue('x_opacity', this.value)">
+                    <span class="value-display" id="x_opacity_value">80%</span>
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">Heat Blend:</label>
+                    <input type="range" id="axis_x_heat" min="0" max="100" value="50" oninput="updateSliderValue('x_heat', this.value)">
+                    <span class="value-display" id="x_heat_value">50%</span>
+                </div>
+            </div>
+
+            <!-- -Y Axis -->
+            <div class="axis-control">
+                <div class="axis-header">-Y Axis (South / 180°)</div>
+                <div class="control-row">
+                    <input type="checkbox" id="axis_neg_y_enabled" checked onchange="updateVisualization()">
+                    <label>Enabled</label>
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">Start Color:</label>
+                    <div class="color-preview" id="neg_y_color1_preview" onclick="document.getElementById('neg_y_color1').click()"></div>
+                    <input type="color" id="neg_y_color1" value="#F44336" onchange="updateColorPreview('neg_y', 1)">
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">End Color:</label>
+                    <div class="color-preview" id="neg_y_color2_preview" onclick="document.getElementById('neg_y_color2').click()"></div>
+                    <input type="color" id="neg_y_color2" value="#0A2540" onchange="updateColorPreview('neg_y', 2)">
+                </div>
+                <div class="control-row">
+                    <input type="checkbox" id="axis_neg_y_inverse" onchange="updateVisualization()">
+                    <label>Inverse Gradient</label>
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">Opacity:</label>
+                    <input type="range" id="axis_neg_y_opacity" min="0" max="100" value="80" oninput="updateSliderValue('neg_y_opacity', this.value)">
+                    <span class="value-display" id="neg_y_opacity_value">80%</span>
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">Heat Blend:</label>
+                    <input type="range" id="axis_neg_y_heat" min="0" max="100" value="50" oninput="updateSliderValue('neg_y_heat', this.value)">
+                    <span class="value-display" id="neg_y_heat_value">50%</span>
+                </div>
+            </div>
+
+            <!-- -X Axis -->
+            <div class="axis-control">
+                <div class="axis-header">-X Axis (West / 270°)</div>
+                <div class="control-row">
+                    <input type="checkbox" id="axis_neg_x_enabled" checked onchange="updateVisualization()">
+                    <label>Enabled</label>
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">Start Color:</label>
+                    <div class="color-preview" id="neg_x_color1_preview" onclick="document.getElementById('neg_x_color1').click()"></div>
+                    <input type="color" id="neg_x_color1" value="#FFC107" onchange="updateColorPreview('neg_x', 1)">
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">End Color:</label>
+                    <div class="color-preview" id="neg_x_color2_preview" onclick="document.getElementById('neg_x_color2').click()"></div>
+                    <input type="color" id="neg_x_color2" value="#0A2540" onchange="updateColorPreview('neg_x', 2)">
+                </div>
+                <div class="control-row">
+                    <input type="checkbox" id="axis_neg_x_inverse" onchange="updateVisualization()">
+                    <label>Inverse Gradient</label>
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">Opacity:</label>
+                    <input type="range" id="axis_neg_x_opacity" min="0" max="100" value="80" oninput="updateSliderValue('neg_x_opacity', this.value)">
+                    <span class="value-display" id="neg_x_opacity_value">80%</span>
+                </div>
+                <div class="control-row">
+                    <label style="min-width: 100px;">Heat Blend:</label>
+                    <input type="range" id="axis_neg_x_heat" min="0" max="100" value="50" oninput="updateSliderValue('neg_x_heat', this.value)">
+                    <span class="value-display" id="neg_x_heat_value">50%</span>
+                </div>
+            </div>
+        </div>
+        <div class="resize-handle nw"></div>
+        <div class="resize-handle ne"></div>
+        <div class="resize-handle sw"></div>
+        <div class="resize-handle se"></div>
+    </div>
+
+    <script>
+        let allNodes = [];
+        let allRings = [];
+        let filteredNodes = [];
+
+        // Initialize color previews
+        window.onload = function() {
+            updateColorPreview('y', 1);
+            updateColorPreview('y', 2);
+            updateColorPreview('x', 1);
+            updateColorPreview('x', 2);
+            updateColorPreview('neg_y', 1);
+            updateColorPreview('neg_y', 2);
+            updateColorPreview('neg_x', 1);
+            updateColorPreview('neg_x', 2);
+            loadData();
+            initDraggable();
+            initResizable();
+        };
+
+        // Dropdown toggle
+        function toggleDropdown() {
+            const menu = document.getElementById('dropdownMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('dropdownMenu');
+            const icon = document.getElementById('dropdownIcon');
+            if (!dropdown.contains(e.target) && e.target !== icon) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // Context menu
+        document.getElementById('mainCanvas').addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            const menu = document.getElementById('contextMenu');
+            menu.style.display = 'block';
+            menu.style.left = e.pageX + 'px';
+            menu.style.top = e.pageY + 'px';
+        });
+
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('contextMenu');
+            if (!menu.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+
+        // Panel management
+        function openPanel(panelName) {
+            const panelId = panelName + 'Panel';
+            const panel = document.getElementById(panelId);
+            panel.style.display = 'block';
+            
+            // Center panel
+            const rect = panel.getBoundingClientRect();
+            panel.style.left = (window.innerWidth - rect.width) / 2 + 'px';
+            panel.style.top = (window.innerHeight - rect.height) / 2 + 100 + 'px';
+            
+            document.getElementById('contextMenu').style.display = 'none';
+            
+            if (panelName === 'nodeManager') {
+                loadNodes();
+            }
+        }
+
+        function closePanel(panelName) {
+            document.getElementById(panelName + 'Panel').style.display = 'none';
+        }
+
+        // Make panels draggable
+        function initDraggable() {
+            const panels = document.querySelectorAll('.control-panel');
+            panels.forEach(panel => {
+                const header = panel.querySelector('.panel-header');
+                let isDragging = false;
+                let currentX, currentY, initialX, initialY;
+
+                header.addEventListener('mousedown', function(e) {
+                    if (e.target.classList.contains('panel-close')) return;
+                    isDragging = true;
+                    initialX = e.clientX - panel.offsetLeft;
+                    initialY = e.clientY - panel.offsetTop;
+                });
+
+                document.addEventListener('mousemove', function(e) {
+                    if (!isDragging) return;
+                    e.preventDefault();
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+                    panel.style.left = currentX + 'px';
+                    panel.style.top = currentY + 'px';
+                });
+
+                document.addEventListener('mouseup', function() {
+                    isDragging = false;
+                });
+            });
+        }
+
+        // Make panels resizable
+        function initResizable() {
+            const panels = document.querySelectorAll('.control-panel');
+            panels.forEach(panel => {
+                const handles = panel.querySelectorAll('.resize-handle');
+                handles.forEach(handle => {
+                    let isResizing = false;
+                    let startX, startY, startWidth, startHeight, startLeft, startTop;
+
+                    handle.addEventListener('mousedown', function(e) {
+                        isResizing = true;
+                        startX = e.clientX;
+                        startY = e.clientY;
+                        startWidth = panel.offsetWidth;
+                        startHeight = panel.offsetHeight;
+                        startLeft = panel.offsetLeft;
+                        startTop = panel.offsetTop;
+                        e.preventDefault();
+                    });
+
+                    document.addEventListener('mousemove', function(e) {
+                        if (!isResizing) return;
+
+                        const dx = e.clientX - startX;
+                        const dy = e.clientY - startY;
+
+                        if (handle.classList.contains('se')) {
+                            panel.style.width = Math.max(400, startWidth + dx) + 'px';
+                            panel.style.height = Math.max(300, startHeight + dy) + 'px';
+                        } else if (handle.classList.contains('sw')) {
+                            panel.style.width = Math.max(400, startWidth - dx) + 'px';
+                            panel.style.height = Math.max(300, startHeight + dy) + 'px';
+                            panel.style.left = startLeft + dx + 'px';
+                        } else if (handle.classList.contains('ne')) {
+                            panel.style.width = Math.max(400, startWidth + dx) + 'px';
+                            panel.style.height = Math.max(300, startHeight - dy) + 'px';
+                            panel.style.top = startTop + dy + 'px';
+                        } else if (handle.classList.contains('nw')) {
+                            panel.style.width = Math.max(400, startWidth - dx) + 'px';
+                            panel.style.height = Math.max(300, startHeight - dy) + 'px';
+                            panel.style.left = startLeft + dx + 'px';
+                            panel.style.top = startTop + dy + 'px';
+                        }
+                    });
+
+                    document.addEventListener('mouseup', function() {
+                        isResizing = false;
+                    });
+                });
+            });
+        }
+
+        // Color preview update
+        function updateColorPreview(axis, colorNum) {
+            const colorInput = document.getElementById(`${axis}_color${colorNum}`);
+            const preview = document.getElementById(`${axis}_color${colorNum}_preview`);
+            preview.style.background = colorInput.value;
+            updateVisualization();
+        }
+
+        // Slider value display
+        function updateSliderValue(id, value) {
+            document.getElementById(`${id}_value`).textContent = value + (id.includes('opacity') ? '%' : '%');
+            updateVisualization();
+        }
+
+        // Load data
+        async function loadData() {
+            try {
+                const ringsResponse = await fetch('/api/fingerprint/rings');
+                const ringsData = await ringsResponse.json();
+                if (ringsData.success) {
+                    allRings = ringsData.data;
+                }
+
+                const nodesResponse = await fetch('/api/fingerprint/nodes');
+                const nodesData = await nodesResponse.json();
+                if (nodesData.success) {
+                    allNodes = nodesData.data;
+                    filteredNodes = allNodes;
+                    renderPlot();
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        // Load nodes for manager
+        function loadNodes() {
+            const domain = document.getElementById('domainFilter').value;
+            const filtered = domain === 'ALL' ? allNodes : allNodes.filter(n => n.domain === domain);
+            
+            const nodeList = document.getElementById('nodeList');
+            nodeList.innerHTML = filtered.map(node => `
+                <div class="node-item" onclick="focusNode('${node.node_code}')">
+                    <div class="node-code">${node.node_code}</div>
+                    <div class="node-name">${node.name}</div>
+                    <span class="node-domain">${node.domain}</span>
+                </div>
+            `).join('');
+        }
+
+        function focusNode(nodeCode) {
+            alert(`Focusing on node: ${nodeCode}`);
+            // TODO: Implement zoom/highlight
+        }
+
+        // Search nodes
+        function searchNodes(query) {
+            if (!query) {
+                filteredNodes = allNodes;
+            } else {
+                const lower = query.toLowerCase();
+                filteredNodes = allNodes.filter(n => 
+                    n.node_code.toLowerCase().includes(lower) ||
+                    n.name.toLowerCase().includes(lower) ||
+                    n.domain.toLowerCase().includes(lower) ||
+                    n.band_label.toLowerCase().includes(lower)
+                );
+            }
+            renderPlot();
+        }
+
+        // Render visualization
+        function renderPlot() {
+            // Create Fibonacci ring traces
+            const ringTraces = allRings.map(ring => ({
+                type: 'scatterpolar',
+                mode: 'lines',
+                r: Array(361).fill(ring.radius),
+                theta: Array.from({length: 361}, (_, i) => i),
+                line: {
+                    color: ring.hex_color,
+                    width: 2,
+                    dash: 'dot'
+                },
+                hoverinfo: 'skip',
+                showlegend: false
+            }));
+
+            // Create 4 Fibonacci axis lines with gradients
+            const axisTraces = createAxisTraces();
+
+            // Create node trace
+            const nodeTrace = {
+                type: 'scatterpolar',
+                mode: 'markers+text',
+                r: filteredNodes.map(n => n.radius),
+                theta: filteredNodes.map(n => n.angle_degrees),
+                text: filteredNodes.map(n => n.node_code),
+                textposition: 'top center',
+                textfont: { size: 9, color: '#0A2540' },
+                marker: {
+                    size: 15,
+                    color: filteredNodes.map(n => n.hex_color),
+                    line: { color: '#0A2540', width: 2 }
+                },
+                hovertemplate: 
+                    '<b>%{text}</b><br>' +
+                    'FP: %{customdata[0]:.3f}<br>' +
+                    'Domain: %{customdata[1]}<br>' +
+                    '<extra></extra>',
+                customdata: filteredNodes.map(n => [n.fingerprint_value, n.domain]),
+                showlegend: false
+            };
+
+            const data = [...ringTraces, ...axisTraces, nodeTrace];
+
+            const layout = {
+                polar: {
+                    bgcolor: 'rgba(242, 243, 244, 0.5)',
+                    radialaxis: {
+                        visible: true,
+                        range: [0, 25],
+                        gridcolor: 'rgba(187, 152, 71, 0.2)',
+                        tickfont: { color: '#BB9847' }
+                    },
+                    angularaxis: {
+                        visible: true,
+                        gridcolor: 'rgba(187, 152, 71, 0.2)',
+                        tickfont: { color: '#BB9847' },
+                        direction: 'clockwise',
+                        rotation: 90
+                    }
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { family: 'Segoe UI', color: '#0A2540' },
+                margin: { l: 80, r: 80, t: 40, b: 80 },
+                hovermode: 'closest'
+            };
+
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false
+            };
+
+            Plotly.newPlot('radialPlot', data, layout, config);
+        }
+
+        function createAxisTraces() {
+            const traces = [];
+            const axes = [
+                { name: 'y', angle: 0, enabled: 'axis_y_enabled' },
+                { name: 'x', angle: 90, enabled: 'axis_x_enabled' },
+                { name: 'neg_y', angle: 180, enabled: 'axis_neg_y_enabled' },
+                { name: 'neg_x', angle: 270, enabled: 'axis_neg_x_enabled' }
+            ];
+
+            axes.forEach(axis => {
+                if (!document.getElementById(axis.enabled)?.checked) return;
+
+                const color1 = document.getElementById(`${axis.name}_color1`).value;
+                const color2 = document.getElementById(`${axis.name}_color2`).value;
+                const inverse = document.getElementById(`${axis.name}_inverse`)?.checked;
+                const opacity = document.getElementById(`${axis.name}_opacity`)?.value / 100 || 0.8;
+                
+                const startColor = inverse ? color2 : color1;
+                const endColor = inverse ? color1 : color2;
+                
+                traces.push({
+                    type: 'scatterpolar',
+                    mode: 'lines',
+                    r: [0, 25],
+                    theta: [axis.angle, axis.angle],
+                    line: {
+                        color: startColor,
+                        width: 4
+                    },
+                    opacity: opacity,
+                    hoverinfo: 'skip',
+                    showlegend: false
+                });
+            });
+
+            return traces;
+        }
+
+        function updateVisualization() {
+            renderPlot();
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(allNodes, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'fingerprint_nodes_2d.json';
+            link.click();
+        }
+
+        function refresh3DPrep() {
+            alert('3D Octahedral Model Coming Soon!\n\nAll nodes have z-components ready for activation.');
+        }
+
+        // Auto-refresh
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>

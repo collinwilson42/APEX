@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APEX - Adaptive Platform for Evolving eXecution</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Plotly for Charts -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    
+    <!-- APEX Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex_tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex_core.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex_tabs.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex_components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex_calendar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex_relativity.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex_indicators.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex_sentiment.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/apex_instances.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile_manager.css') }}">
+</head>
+<body>
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         APEX APPLICATION - Full Viewport
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <div id="apex-app">
+        
+        <!-- Tab Bar (36px) -->
+        <div id="apex-tab-bar" role="tablist" aria-label="Instance tabs">
+            <!-- Rendered by apex_tabs.js -->
+        </div>
+        
+        <!-- Main Content -->
+        <div id="apex-main">
+            
+            <!-- View Panel (Top 50%) -->
+            <div id="apex-view-panel" role="tabpanel">
+                <div class="view-panel__content" id="view-panel-content">
+                    <div class="view-panel__placeholder">
+                        <div class="view-panel__placeholder-icon">◎</div>
+                        <div class="view-panel__placeholder-text">
+                            Select or create an instance to view
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Divider -->
+            <div id="apex-divider" role="separator">
+                <div class="divider__handle"></div>
+            </div>
+            
+            <!-- Control Center (Bottom 50%) -->
+            <div id="apex-control-center">
+                <div class="control-center__panel">
+                    <!-- Header with Instance Identity -->
+                    <div class="control-center__header">
+                        <div class="control-center__header-content">
+                            <div class="no-instance">
+                                <div class="no-instance__title">No Instance Selected</div>
+                                <div class="no-instance__subtitle">Click the APEX logo to create a new instance</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Body - Content Slot -->
+                    <div class="control-center__body" id="control-center-body">
+                        <div class="control-center__placeholder">
+                            Control Center content will appear here
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
+    <!-- APEX Scripts -->
+    <script src="{{ url_for('static', filename='js/apex_core.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/apex_tabs.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/apex_charts.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/apex_markov.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/apex_sentiment.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/apex_instances.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/profile_manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/apex_calendar.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/apex_indicators.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/apex_views.js') }}"></script>
+</body>
+</html>

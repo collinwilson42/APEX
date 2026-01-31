@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligence Database - MT5 Meta Agent V11.3</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/database.css') }}">
+    <style>
+        /* ================================================================
+           APEX V2.0 INTELLIGENCE DATABASE STYLES
+           ================================================================ */
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Horizontal scrollable table - BIDIRECTIONAL */
+        .table-container-scroll {
+            overflow-x: auto;
+            overflow-y: visible;
+            position: relative;
+            margin: 15px 0;
+            scroll-behavior: smooth;
+        }
+        
+        /* Beautiful scrollbar */
+        .table-container-scroll::-webkit-scrollbar {
+            height: 10px;
+        }
+        
+        .table-container-scroll::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+        }
+        
+        .table-container-scroll::-webkit-scrollbar-thumb {
+            background: linear-gradient(90deg, #b8860b 0%, #ffd700 50%, #b8860b 100%);
+            border-radius: 5px;
+            border: 2px solid rgba(0,0,0,0.3);
+        }
+        
+        .table-container-scroll::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(90deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
+        }
+        
+        /* Wide table with proper spacing */
+        .data-table-wide {
+            width: auto;
+            min-width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        .data-table-wide th,
+        .data-table-wide td {
+            padding: 12px 20px;
+            text-align: center;
+            white-space: nowrap;
+            border-right: 1px solid rgba(184, 134, 11, 0.2);
+            border-bottom: 1px solid rgba(184, 134, 11, 0.1);
+            min-width: 100px;
+        }
+        
+        .data-table-wide th:first-child,
+        .data-table-wide td:first-child {
+            min-width: 160px;
+            position: sticky;
+            left: 0;
+            background: #0a0a0a;
+            z-index: 5;
+        }
+        
+        .data-table-wide th:last-child,
+        .data-table-wide td:last-child {
+            border-right: none;
+        }
+        
+        .data-table-wide th {
+            background: linear-gradient(180deg, rgba(184, 134, 11, 0.3), rgba(184, 134, 11, 0.1));
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+            color: #ffd700;
+            text-transform: uppercase;
+        }
+        
+        .data-table-wide th:first-child {
+            z-index: 15;
+        }
+        
+        .data-table-wide tbody tr:hover {
+            background: rgba(184, 134, 11, 0.08);
+        }
+        
+        .data-table-wide tbody tr:nth-child(even) {
+            background: rgba(0,0,0,0.2);
+        }
+        
+        .data-table-wide tbody td {
+            font-size: 12px;
+            color: #e0e0e0;
+        }
+        
+        /* Section styling */
+        .data-section {
+            margin-bottom: 25px;
+            background: linear-gradient(135deg, rgba(20, 20, 30, 0.9), rgba(10, 10, 15, 0.95));
+            border: 1px solid rgba(184, 134, 11, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: linear-gradient(90deg, rgba(184, 134, 11, 0.2), transparent);
+            border-bottom: 1px solid rgba(184, 134, 11, 0.2);
+        }
+        
+        .section-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .section-left h3 {
+            margin: 0;
+            color: #ffd700;
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .section-price {
+            color: #4ecdc4;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .section-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-expand-btn {
+            background: rgba(184, 134, 11, 0.2);
+            border: 1px solid rgba(184, 134, 11, 0.4);
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .section-expand-btn:hover {
+            background: rgba(184, 134, 11, 0.3);
+            border-color: #ffd700;
+        }
+        
+        .expand-gif-small {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .section-body {
+            padding: 0 15px 15px 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            transition: max-height 0.3s ease;
+        }
+        
+        .section-body.partial {
+            max-height: 250px;
+        }
+        
+        .section-body.full {
+            max-height: none;
+        }
+        
+        /* Hide messy sections */
+        .api-complex-section,
+        #profileRiskSection,
+        .intelligence-hero,
+        .header,
+        .footer,
+        #dropdownMenu {
+            display: none !important;
+        }
+        
+        /* Clean page title */
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffd700;
+            margin: 20px 0 30px 0;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        .page-subtitle {
+            text-align: center;
+            color: rgba(255, 215, 0, 0.6);
+            font-size: 12px;
+            letter-spacing: 2px;
+            margin-top: -20px;
+            margin-bottom: 30px;
+        }
+        
+        /* Timeframe selector */
+        .timeframe-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .tf-btn {
+            padding: 10px 30px;
+            background: rgba(184, 134, 11, 0.2);
+            border: 2px solid rgba(184, 134, 11, 0.4);
+            color: #ffd700;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 5px;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+        
+        .tf-btn:hover {
+            background: rgba(184, 134, 11, 0.3);
+            border-color: rgba(255, 215, 0, 0.6);
+        }
+        
+        .tf-btn.active {
+            background: linear-gradient(135deg, rgba(184, 134, 11, 0.4), rgba(255, 215, 0, 0.2));
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+        }
+        
+        /* Loading state */
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255, 215, 0, 0.6);
+            font-style: italic;
+        }
+        
+        /* Status badges */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-active {
+            background: rgba(78, 205, 196, 0.2);
+            color: #4ecdc4;
+            border: 1px solid rgba(78, 205, 196, 0.4);
+        }
+        
+        .status-inactive {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+            border: 1px solid rgba(255, 107, 107, 0.4);
+        }
+        
+        /* Group cards for summary */
+        .group-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            padding: 15px;
+        }
+        
+        .group-card {
+            background: linear-gradient(135deg, rgba(184, 134, 11, 0.1), rgba(0,0,0,0.3));
+            border: 1px solid rgba(184, 134, 11, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .group-card:hover {
+            border-color: #ffd700;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.2);
+        }
+        
+        .group-card h4 {
+            color: #ffd700;
+            margin: 0 0 10px 0;
+            font-size: 13px;
+            letter-spacing: 1px;
+        }
+        
+        .group-card .count {
+            font-size: 32px;
+            font-weight: 700;
+            color: #4ecdc4;
+            margin: 10px 0;
+        }
+        
+        .group-card .desc {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.4;
+        }
+        
+        /* Evaluation settings panel */
+        .eval-settings-panel {
+            display: flex;
+            gap: 30px;
+            padding: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .eval-setting {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(184, 134, 11, 0.3);
+            border-radius: 8px;
+            padding: 15px 25px;
+            text-align: center;
+        }
+        
+        .eval-setting .label {
+            font-size: 10px;
+            color: rgba(255, 215, 0, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        .eval-setting .value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #4ecdc4;
+        }
+        
+        /* Section divider */
+        .section-divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(184, 134, 11, 0.5), transparent);
+            margin: 40px 0;
+        }
+        
+        .section-divider-title {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .section-divider-title span {
+            background: #0a0a0a;
+            padding: 0 20px;
+            color: #ffd700;
+            font-size: 14px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        /* TUNITY Dropdown Button */
+        .tunity-dropdown-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .tunity-dropdown-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, rgba(184, 134, 11, 0.3), rgba(255, 215, 0, 0.1));
+            border: 1px solid rgba(184, 134, 11, 0.5);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .tunity-dropdown-btn:hover {
+            background: linear-gradient(135deg, rgba(184, 134, 11, 0.5), rgba(255, 215, 0, 0.2));
+            border-color: #ffd700;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        .tunity-dropdown-btn img {
+            width: 28px;
+            height: 28px;
+            transition: transform 0.3s ease;
+        }
+        
+        .tunity-dropdown-btn.open img {
+            transform: rotate(180deg);
+        }
+        
+        .tunity-dropdown-btn span {
+            color: #ffd700;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .tunity-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 10px;
+            background: linear-gradient(135deg, rgba(20, 20, 30, 0.98), rgba(10, 10, 15, 0.98));
+            border: 1px solid rgba(184, 134, 11, 0.4);
+            border-radius: 10px;
+            padding: 10px;
+            min-width: 220px;
+            display: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        .tunity-dropdown-menu.show {
+            display: block;
+            animation: dropdownFade 0.3s ease;
+        }
+        
+        @keyframes dropdownFade {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .tunity-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            color: #e0e0e0;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            font-size: 13px;
+        }
+        
+        .tunity-dropdown-item:hover {
+            background: rgba(184, 134, 11, 0.2);
+            color: #ffd700;
+            transform: translateX(5px);
+        }
+        
+        .tunity-dropdown-item img {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .tunity-dropdown-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(184, 134, 11, 0.4), transparent);
+            margin: 8px 0;
+        }
+
+        /* Tab navigation for Apex sections */
+        .apex-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .apex-tab {
+            padding: 12px 25px;
+            background: rgba(184, 134, 11, 0.1);
+            border: 1px solid rgba(184, 134, 11, 0.3);
+            color: rgba(255, 215, 0, 0.7);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-radius: 5px;
+        }
+
+        .apex-tab:hover {
+            background: rgba(184, 134, 11, 0.2);
+            color: #ffd700;
+        }
+
+        .apex-tab.active {
+            background: linear-gradient(135deg, rgba(184, 134, 11, 0.3), rgba(255, 215, 0, 0.1));
+            border-color: #ffd700;
+            color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+        }
+
+        .apex-content {
+            display: none;
+        }
+
+        .apex-content.active {
+            display: block;
+        }
+
+        /* Filter controls */
+        .filter-controls {
+            display: flex;
+            gap: 15px;
+            padding: 15px 20px;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid rgba(184, 134, 11, 0.2);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-label {
+            font-size: 10px;
+            color: rgba(255, 215, 0, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .filter-select {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(184, 134, 11, 0.4);
+            color: #e0e0e0;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <!-- TUNITY Dropdown Button -->
+    <div class="tunity-dropdown-container">
+        <div class="tunity-dropdown-btn" id="tunityDropdownBtn">
+            <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Extendo">
+            <span>Control</span>
+        </div>
+        <div class="tunity-dropdown-menu" id="tunityDropdownMenu">
+            <a href="/markov" class="tunity-dropdown-item">
+                <img src="{{ url_for('static', filename='img/LIVE_ACTIVE.gif') }}" alt="Wizaude">
+                WIZAUDE Markov Panel
+            </a>
+            <a href="/tunity" class="tunity-dropdown-item">
+                <img src="{{ url_for('static', filename='img/settings.png') }}" alt="Settings">
+                TUNITY Control Panel
+            </a>
+            <div class="tunity-dropdown-divider"></div>
+            <a href="/chart-data" class="tunity-dropdown-item">
+                <img src="{{ url_for('static', filename='img/node_transparent.png') }}" alt="Database">
+                Intelligence Database
+            </a>
+            <a href="/api/wizaude/status" class="tunity-dropdown-item" target="_blank">
+                <img src="{{ url_for('static', filename='img/LIVE_ACTIVE.gif') }}" alt="Status">
+                Wizaude API Status
+            </a>
+            <div class="tunity-dropdown-divider"></div>
+            <a href="/api/status" class="tunity-dropdown-item" target="_blank">
+                <img src="{{ url_for('static', filename='img/LIVE_ACTIVE.gif') }}" alt="Status">
+                System Status
+            </a>
+            <a href="/api/health" class="tunity-dropdown-item" target="_blank">
+                <img src="{{ url_for('static', filename='img/node_transparent.png') }}" alt="Health">
+                Health Check
+            </a>
+        </div>
+    </div>
+    
+    <div class="container">
+        
+        <!-- Clean Page Title -->
+        <div class="page-title">MT5 INTELLIGENCE DATABASE V11.3</div>
+        <div class="page-subtitle">APEX SIGNALS V2.0 INTEGRATION</div>
+        
+        <!-- Timeframe Controls -->
+        <div class="timeframe-controls">
+            <button class="tf-btn" id="tf1m" data-timeframe="1m">1 MINUTE</button>
+            <button class="tf-btn active" id="tf15m" data-timeframe="15m">15 MINUTE</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" class="main-content">
+
+            <!-- ===================================== -->
+            <!-- CORE MARKET DATA -->
+            <!-- ===================================== -->
+            <div class="data-section" id="coreSection">
+                <div class="section-header">
+                    <div class="section-left">
+                        <h3>CORE MARKET DATA</h3>
+                        <span class="section-price" id="corePrice">--</span>
+                    </div>
+                    <div class="section-right">
+                        <button class="section-expand-btn" data-section="core">
+                            <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Expand" class="expand-gif-small section-extendo" data-state="up">
+                        </button>
+                    </div>
+                </div>
+                <div class="section-body partial" id="coreBody">
+                    <div class="table-container-scroll">
+                        <table class="data-table data-table-wide">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>SYMBOL</th>
+                                    <th>OPEN</th>
+                                    <th>HIGH</th>
+                                    <th>LOW</th>
+                                    <th>CLOSE</th>
+                                    <th>VOLUME</th>
+                                </tr>
+                            </thead>
+                            <tbody id="coreTableBody">
+                                <tr>
+                                    <td colspan="7" class="no-data">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- BASIC INDICATORS -->
+            <!-- ===================================== -->
+            <div class="data-section" id="basicSection">
+                <div class="section-header">
+                    <div class="section-left">
+                        <h3>BASIC INDICATORS</h3>
+                        <span class="section-price" id="basicPrice">--</span>
+                    </div>
+                    <div class="section-right">
+                        <button class="section-expand-btn" data-section="basic">
+                            <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Expand" class="expand-gif-small section-extendo" data-state="up">
+                        </button>
+                    </div>
+                </div>
+                <div class="section-body partial" id="basicBody">
+                    <div class="table-container-scroll">
+                        <table class="data-table data-table-wide">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>ATR 14</th>
+                                    <th>ATR 50 AVG</th>
+                                    <th>ATR RATIO</th>
+                                    <th>EMA SHORT</th>
+                                    <th>EMA MEDIUM</th>
+                                    <th>EMA DISTANCE</th>
+                                    <th>SUPERTREND</th>
+                                </tr>
+                            </thead>
+                            <tbody id="basicTableBody">
+                                <tr>
+                                    <td colspan="8" class="no-data">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- ADVANCED INDICATORS -->
+            <!-- ===================================== -->
+            <div class="data-section" id="advancedSection">
+                <div class="section-header">
+                    <div class="section-left">
+                        <h3>ADVANCED INDICATORS</h3>
+                        <span class="section-price" id="advancedPrice">--</span>
+                    </div>
+                    <div class="section-right">
+                        <button class="section-expand-btn" data-section="advanced">
+                            <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Expand" class="expand-gif-small section-extendo" data-state="up">
+                        </button>
+                    </div>
+                </div>
+                <div class="section-body partial" id="advancedBody">
+                    <div class="table-container-scroll">
+                        <table class="data-table data-table-wide">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>RSI 1</th><th>RSI 2</th><th>RSI 3</th><th>RSI 4</th><th>RSI 5</th><th>RSI 6</th><th>RSI 7</th><th>RSI 8</th><th>RSI 9</th><th>RSI 10</th><th>RSI 11</th><th>RSI 12</th><th>RSI 13</th><th>RSI 14</th>
+                                    <th>CCI 1</th><th>CCI 2</th><th>CCI 3</th><th>CCI 4</th><th>CCI 5</th><th>CCI 6</th><th>CCI 7</th><th>CCI 8</th><th>CCI 9</th><th>CCI 10</th><th>CCI 11</th><th>CCI 12</th><th>CCI 13</th><th>CCI 14</th>
+                                    <th>STOCH K 1</th><th>STOCH K 2</th><th>STOCH K 3</th><th>STOCH K 4</th><th>STOCH K 5</th><th>STOCH K 6</th><th>STOCH K 7</th><th>STOCH K 8</th><th>STOCH K 9</th><th>STOCH K 10</th><th>STOCH K 11</th><th>STOCH K 12</th><th>STOCH K 13</th><th>STOCH K 14</th>
+                                    <th>WILL R 1</th><th>WILL R 2</th><th>WILL R 3</th><th>WILL R 4</th><th>WILL R 5</th><th>WILL R 6</th><th>WILL R 7</th><th>WILL R 8</th><th>WILL R 9</th><th>WILL R 10</th><th>WILL R 11</th><th>WILL R 12</th><th>WILL R 13</th><th>WILL R 14</th>
+                                    <th>MOM 1</th><th>MOM 2</th><th>MOM 3</th><th>MOM 4</th><th>MOM 5</th><th>MOM 6</th><th>MOM 7</th><th>MOM 8</th><th>MOM 9</th><th>MOM 10</th><th>MOM 11</th><th>MOM 12</th><th>MOM 13</th><th>MOM 14</th>
+                                    <th>BB UPPER 20</th><th>BB MIDDLE 20</th><th>BB LOWER 20</th><th>BB WIDTH 20</th>
+                                    <th>MACD LINE</th><th>MACD SIGNAL</th><th>MACD HIST</th>
+                                    <th>OBV</th>
+                                    <th>ROC 1</th><th>ROC 2</th><th>ROC 3</th><th>ROC 4</th><th>ROC 5</th><th>ROC 6</th><th>ROC 7</th><th>ROC 8</th><th>ROC 9</th><th>ROC 10</th><th>ROC 11</th><th>ROC 12</th><th>ROC 13</th><th>ROC 14</th>
+                                </tr>
+                            </thead>
+                            <tbody id="advancedTableBody">
+                                <tr>
+                                    <td colspan="100" class="no-data">Loading advanced indicators...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- FIBONACCI DATA -->
+            <!-- ===================================== -->
+            <div class="data-section" id="fibonacciSection">
+                <div class="section-header">
+                    <div class="section-left">
+                        <h3>FIBONACCI DATA</h3>
+                        <span class="section-price" id="fibonacciPrice">--</span>
+                    </div>
+                    <div class="section-right">
+                        <button class="section-expand-btn" data-section="fibonacci">
+                            <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Expand" class="expand-gif-small section-extendo" data-state="up">
+                        </button>
+                    </div>
+                </div>
+                <div class="section-body partial" id="fibonacciBody">
+                    <div class="table-container-scroll">
+                        <table class="data-table data-table-wide">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>ZONE</th>
+                                    <th>GOLDEN ZONE</th>
+                                    <th>MULTIPLIER</th>
+                                    <th>PIVOT HIGH</th>
+                                    <th>PIVOT LOW</th>
+                                    <th>FIB 0.382</th>
+                                    <th>FIB 0.618</th>
+                                    <th>FIB 0.786</th>
+                                    <th>DISTANCE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fibonacciTableBody">
+                                <tr>
+                                    <td colspan="10" class="no-data">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- ATH TRACKING -->
+            <!-- ===================================== -->
+            <div class="data-section" id="athSection">
+                <div class="section-header">
+                    <div class="section-left">
+                        <h3>ATH TRACKING</h3>
+                        <span class="section-price" id="athPrice">--</span>
+                    </div>
+                    <div class="section-right">
+                        <button class="section-expand-btn" data-section="ath">
+                            <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Expand" class="expand-gif-small section-extendo" data-state="up">
+                        </button>
+                    </div>
+                </div>
+                <div class="section-body partial" id="athBody">
+                    <div class="table-container-scroll">
+                        <table class="data-table data-table-wide">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>CURRENT ATH</th>
+                                    <th>CLOSE</th>
+                                    <th>DISTANCE PTS</th>
+                                    <th>DISTANCE %</th>
+                                    <th>MULTIPLIER</th>
+                                    <th>ZONE</th>
+                                    <th>PERCENTILE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="athTableBody">
+                                <tr>
+                                    <td colspan="8" class="no-data">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- APEX V2.0 SECTION DIVIDER -->
+            <!-- ===================================== -->
+            <div class="section-divider"></div>
+            <div class="section-divider-title">
+                <span>APEX SIGNALS V2.0 - INDICATOR MANAGEMENT</span>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- APEX V2.0 TABS -->
+            <!-- ===================================== -->
+            <div class="apex-tabs">
+                <button class="apex-tab active" data-tab="groupSummary">GROUP SUMMARY</button>
+                <button class="apex-tab" data-tab="indicatorGroups">INDICATOR GROUPS</button>
+                <button class="apex-tab" data-tab="indicators">INDICATORS CATALOG</button>
+                <button class="apex-tab" data-tab="indicatorConfigs">INDICATOR CONFIGS</button>
+                <button class="apex-tab" data-tab="evalSettings">EVALUATION SETTINGS</button>
+                <button class="apex-tab" data-tab="aiResults">AI ANALYSIS RESULTS</button>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- GROUP SUMMARY (Cards View) -->
+            <!-- ===================================== -->
+            <div class="apex-content active" id="groupSummaryContent">
+                <div class="data-section">
+                    <div class="section-header">
+                        <div class="section-left">
+                            <h3>INDICATOR GROUP SUMMARY</h3>
+                            <span class="section-price" id="totalIndicators">--</span>
+                        </div>
+                    </div>
+                    <div class="group-summary-grid" id="groupSummaryGrid">
+                        <!-- Cards populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- INDICATOR GROUPS -->
+            <!-- ===================================== -->
+            <div class="apex-content" id="indicatorGroupsContent">
+                <div class="data-section">
+                    <div class="section-header">
+                        <div class="section-left">
+                            <h3>INDICATOR GROUPS</h3>
+                            <span class="section-price">4 Groups</span>
+                        </div>
+                    </div>
+                    <div class="section-body full">
+                        <div class="table-container-scroll">
+                            <table class="data-table data-table-wide">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>NAME</th>
+                                        <th>DESCRIPTION</th>
+                                        <th>STATUS</th>
+                                        <th>DISPLAY ORDER</th>
+                                        <th>CREATED</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="indicatorGroupsTableBody">
+                                    <tr>
+                                        <td colspan="6" class="no-data">Loading indicator groups...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- INDICATORS CATALOG -->
+            <!-- ===================================== -->
+            <div class="apex-content" id="indicatorsContent">
+                <div class="data-section">
+                    <div class="section-header">
+                        <div class="section-left">
+                            <h3>INDICATORS CATALOG</h3>
+                            <span class="section-price" id="indicatorCount">--</span>
+                        </div>
+                    </div>
+                    <div class="filter-controls">
+                        <div class="filter-group">
+                            <span class="filter-label">Filter by Group:</span>
+                            <select class="filter-select" id="indicatorGroupFilter">
+                                <option value="">All Groups</option>
+                                <option value="1">Group 1 - Trend</option>
+                                <option value="2">Group 2 - Momentum</option>
+                                <option value="3">Group 3 - Volatility</option>
+                                <option value="4">Group 4 - Volume/Flow</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="section-body full">
+                        <div class="table-container-scroll">
+                            <table class="data-table data-table-wide">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>NAME</th>
+                                        <th>DISPLAY NAME</th>
+                                        <th>DESCRIPTION</th>
+                                        <th>LOGIC BASE</th>
+                                        <th>DEFAULT GROUP</th>
+                                        <th>CREATED</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="indicatorsTableBody">
+                                    <tr>
+                                        <td colspan="7" class="no-data">Loading indicators catalog...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- INDICATOR CONFIGS -->
+            <!-- ===================================== -->
+            <div class="apex-content" id="indicatorConfigsContent">
+                <div class="data-section">
+                    <div class="section-header">
+                        <div class="section-left">
+                            <h3>INDICATOR CONFIGURATIONS</h3>
+                            <span class="section-price" id="configCount">--</span>
+                        </div>
+                    </div>
+                    <div class="filter-controls">
+                        <div class="filter-group">
+                            <span class="filter-label">Filter by Group:</span>
+                            <select class="filter-select" id="configGroupFilter">
+                                <option value="">All Groups</option>
+                                <option value="1">Group 1 - Trend</option>
+                                <option value="2">Group 2 - Momentum</option>
+                                <option value="3">Group 3 - Volatility</option>
+                                <option value="4">Group 4 - Volume/Flow</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Show:</span>
+                            <select class="filter-select" id="configActiveFilter">
+                                <option value="">All</option>
+                                <option value="true">Active Only</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="section-body full">
+                        <div class="table-container-scroll">
+                            <table class="data-table data-table-wide">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>INDICATOR</th>
+                                        <th>DISPLAY NAME</th>
+                                        <th>SCOPE</th>
+                                        <th>STATUS</th>
+                                        <th>GROUP</th>
+                                        <th>ORDER</th>
+                                        <th>LOGIC BASE</th>
+                                        <th>LAST UPDATED</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="indicatorConfigsTableBody">
+                                    <tr>
+                                        <td colspan="9" class="no-data">Loading indicator configs...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- EVALUATION SETTINGS -->
+            <!-- ===================================== -->
+            <div class="apex-content" id="evalSettingsContent">
+                <div class="data-section">
+                    <div class="section-header">
+                        <div class="section-left">
+                            <h3>EVALUATION SETTINGS</h3>
+                            <span class="section-price">AI Interval Control</span>
+                        </div>
+                    </div>
+                    <div class="eval-settings-panel" id="evalSettingsPanel">
+                        <!-- Settings populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- AI ANALYSIS RESULTS -->
+            <!-- ===================================== -->
+            <div class="apex-content" id="aiResultsContent">
+                <div class="data-section">
+                    <div class="section-header">
+                        <div class="section-left">
+                            <h3>AI ANALYSIS RESULTS</h3>
+                            <span class="section-price" id="aiResultsCount">--</span>
+                        </div>
+                    </div>
+                    <div class="section-body full">
+                        <div class="table-container-scroll">
+                            <table class="data-table data-table-wide">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>TIMESTAMP</th>
+                                        <th>SYMBOL</th>
+                                        <th>TIMEFRAME</th>
+                                        <th>RECOMMENDATION</th>
+                                        <th>CONFIDENCE</th>
+                                        <th>TREND DIR</th>
+                                        <th>TREND STR</th>
+                                        <th>RISK LEVEL</th>
+                                        <th>STOP LOSS</th>
+                                        <th>TAKE PROFIT</th>
+                                        <th>BULLISH SIGNALS</th>
+                                        <th>BEARISH SIGNALS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="aiResultsTableBody">
+                                    <tr>
+                                        <td colspan="13" class="no-data">No AI analysis results yet. Run an evaluation cycle to populate this table.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ================================================================
+        // TUNITY DROPDOWN TOGGLE
+        // ================================================================
+        document.getElementById('tunityDropdownBtn').addEventListener('click', function() {
+            this.classList.toggle('open');
+            document.getElementById('tunityDropdownMenu').classList.toggle('show');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const dropdown = document.querySelector('.tunity-dropdown-container');
+            if (!dropdown.contains(e.target)) {
+                document.getElementById('tunityDropdownBtn').classList.remove('open');
+                document.getElementById('tunityDropdownMenu').classList.remove('show');
+            }
+        });
+        
+        // ================================================================
+        // STATE
+        // ================================================================
+        let currentTimeframe = '15m';
+        
+        // ================================================================
+        // TIMEFRAME CONTROLS
+        // ================================================================
+        document.querySelectorAll('.tf-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentTimeframe = this.dataset.timeframe;
+                loadAllData();
+            });
+        });
+        
+        // ================================================================
+        // SECTION EXPAND/COLLAPSE
+        // ================================================================
+        document.querySelectorAll('.section-expand-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const section = this.dataset.section;
+                const body = document.getElementById(section + 'Body');
+                const gif = this.querySelector('.section-extendo');
+                
+                if (body.classList.contains('partial')) {
+                    body.classList.remove('partial');
+                    body.classList.add('full');
+                    gif.dataset.state = 'down';
+                } else {
+                    body.classList.remove('full');
+                    body.classList.add('partial');
+                    gif.dataset.state = 'up';
+                }
+            });
+        });
+
+        // ================================================================
+        // APEX V2.0 TABS
+        // ================================================================
+        document.querySelectorAll('.apex-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.apex-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.apex-content').forEach(c => c.classList.remove('active'));
+                
+                this.classList.add('active');
+                const tabId = this.dataset.tab + 'Content';
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // ================================================================
+        // FILTER CONTROLS
+        // ================================================================
+        document.getElementById('indicatorGroupFilter').addEventListener('change', loadIndicators);
+        document.getElementById('configGroupFilter').addEventListener('change', loadIndicatorConfigs);
+        document.getElementById('configActiveFilter').addEventListener('change', loadIndicatorConfigs);
+        
+        // ================================================================
+        // LOAD ALL DATA
+        // ================================================================
+        function loadAllData() {
+            loadCore();
+            loadBasic();
+            loadAdvanced();
+            loadFibonacci();
+            loadATH();
+            loadGroupSummary();
+            loadIndicatorGroups();
+            loadIndicators();
+            loadIndicatorConfigs();
+            loadEvaluationSettings();
+            loadAIResults();
+        }
+        
+        // ================================================================
+        // CORE MARKET DATA
+        // ================================================================
+        function loadCore() {
+            fetch(`/api/core?timeframe=${currentTimeframe}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        const tbody = document.getElementById('coreTableBody');
+                        tbody.innerHTML = '';
+                        
+                        data.data.forEach(row => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${row.timestamp}</td>
+                                <td>${row.symbol}</td>
+                                <td>${row.open}</td>
+                                <td>${row.high}</td>
+                                <td>${row.low}</td>
+                                <td>${row.close}</td>
+                                <td>${row.volume}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                        
+                        document.getElementById('corePrice').textContent = data.data[0].close;
+                    }
+                })
+                .catch(err => console.error('Error loading core:', err));
+        }
+        
+        // ================================================================
+        // BASIC INDICATORS
+        // ================================================================
+        function loadBasic() {
+            fetch(`/api/basic?timeframe=${currentTimeframe}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        const tbody = document.getElementById('basicTableBody');
+                        tbody.innerHTML = '';
+                        
+                        data.data.forEach(row => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${row.timestamp}</td>
+                                <td>${row.atr_14 || '--'}</td>
+                                <td>${row.atr_50_avg || '--'}</td>
+                                <td>${row.atr_ratio || '--'}</td>
+                                <td>${row.ema_short || '--'}</td>
+                                <td>${row.ema_medium || '--'}</td>
+                                <td>${row.ema_distance || '--'}</td>
+                                <td>${row.supertrend || '--'}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                        
+                        document.getElementById('basicPrice').textContent = data.data[0].supertrend || '--';
+                    }
+                })
+                .catch(err => console.error('Error loading basic:', err));
+        }
+        
+        // ================================================================
+        // ADVANCED INDICATORS
+        // ================================================================
+        function loadAdvanced() {
+            fetch(`/api/advanced?timeframe=${currentTimeframe}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        const tbody = document.getElementById('advancedTableBody');
+                        tbody.innerHTML = '';
+                        
+                        data.data.forEach(row => {
+                            const tr = document.createElement('tr');
+                            let html = `<td>${row.timestamp}</td>`;
+                            
+                            // RSI 1-14
+                            for (let i = 1; i <= 14; i++) {
+                                html += `<td>${row[`rsi_${i}`] !== null ? row[`rsi_${i}`].toFixed(2) : '--'}</td>`;
+                            }
+                            // CCI 1-14
+                            for (let i = 1; i <= 14; i++) {
+                                html += `<td>${row[`cci_${i}`] !== null ? row[`cci_${i}`].toFixed(2) : '--'}</td>`;
+                            }
+                            // Stochastic K 1-14
+                            for (let i = 1; i <= 14; i++) {
+                                html += `<td>${row[`stoch_k_${i}`] !== null ? row[`stoch_k_${i}`].toFixed(2) : '--'}</td>`;
+                            }
+                            // Williams R 1-14
+                            for (let i = 1; i <= 14; i++) {
+                                html += `<td>${row[`williams_r_${i}`] !== null ? row[`williams_r_${i}`].toFixed(2) : '--'}</td>`;
+                            }
+                            // Momentum 1-14
+                            for (let i = 1; i <= 14; i++) {
+                                html += `<td>${row[`momentum_${i}`] !== null ? row[`momentum_${i}`].toFixed(4) : '--'}</td>`;
+                            }
+                            // Bollinger Bands
+                            html += `<td>${row.bb_upper_20 !== null ? row.bb_upper_20.toFixed(4) : '--'}</td>`;
+                            html += `<td>${row.bb_middle_20 !== null ? row.bb_middle_20.toFixed(4) : '--'}</td>`;
+                            html += `<td>${row.bb_lower_20 !== null ? row.bb_lower_20.toFixed(4) : '--'}</td>`;
+                            html += `<td>${row.bb_width_20 !== null ? row.bb_width_20.toFixed(4) : '--'}</td>`;
+                            // MACD
+                            html += `<td>${row.macd_line_12_26 !== null ? row.macd_line_12_26.toFixed(4) : '--'}</td>`;
+                            html += `<td>${row.macd_signal_12_26_9 !== null ? row.macd_signal_12_26_9.toFixed(4) : '--'}</td>`;
+                            html += `<td>${row.macd_histogram_12_26_9 !== null ? row.macd_histogram_12_26_9.toFixed(4) : '--'}</td>`;
+                            // OBV
+                            html += `<td>${row.obv !== null ? row.obv : '--'}</td>`;
+                            // ROC 1-14
+                            for (let i = 1; i <= 14; i++) {
+                                html += `<td>${row[`roc_${i}`] !== null ? row[`roc_${i}`].toFixed(2) : '--'}</td>`;
+                            }
+                            
+                            tr.innerHTML = html;
+                            tbody.appendChild(tr);
+                        });
+                        
+                        document.getElementById('advancedPrice').textContent = `RSI(14): ${data.data[0].rsi_14.toFixed(2)}`;
+                    } else {
+                        const tbody = document.getElementById('advancedTableBody');
+                        tbody.innerHTML = '<tr><td colspan="100" class="no-data">No advanced indicators data.</td></tr>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error loading advanced:', err);
+                    const tbody = document.getElementById('advancedTableBody');
+                    tbody.innerHTML = '<tr><td colspan="100" class="no-data">Error loading advanced indicators.</td></tr>';
+                });
+        }
+        
+        // ================================================================
+        // FIBONACCI DATA
+        // ================================================================
+        function loadFibonacci() {
+            fetch(`/api/fibonacci?timeframe=${currentTimeframe}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        const tbody = document.getElementById('fibonacciTableBody');
+                        tbody.innerHTML = '';
+                        
+                        data.data.forEach(row => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${row.timestamp}</td>
+                                <td>${row.current_fib_zone || '--'}</td>
+                                <td>${row.in_golden_zone ? 'YES' : 'NO'}</td>
+                                <td>${row.zone_multiplier || '--'}</td>
+                                <td>${row.pivot_high || '--'}</td>
+                                <td>${row.pivot_low || '--'}</td>
+                                <td>${row.fib_level_0382 || '--'}</td>
+                                <td>${row.fib_level_0618 || '--'}</td>
+                                <td>${row.fib_level_0786 || '--'}</td>
+                                <td>${row.distance_to_next_level || '--'}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                        
+                        document.getElementById('fibonacciPrice').textContent = `Zone ${data.data[0].current_fib_zone}`;
+                    }
+                })
+                .catch(err => console.error('Error loading fibonacci:', err));
+        }
+        
+        // ================================================================
+        // ATH TRACKING
+        // ================================================================
+        function loadATH() {
+            fetch(`/api/ath?timeframe=${currentTimeframe}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        const tbody = document.getElementById('athTableBody');
+                        tbody.innerHTML = '';
+                        
+                        data.data.forEach(row => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${row.timestamp}</td>
+                                <td>${row.current_ath || '--'}</td>
+                                <td>${row.current_close || '--'}</td>
+                                <td>${row.ath_distance_points || '--'}</td>
+                                <td>${row.ath_distance_pct || '--'}</td>
+                                <td>${row.ath_multiplier || '--'}</td>
+                                <td>${row.ath_zone || '--'}</td>
+                                <td>${row.distance_from_ath_percentile || '--'}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                        
+                        document.getElementById('athPrice').textContent = data.data[0].ath_zone || '--';
+                    }
+                })
+                .catch(err => console.error('Error loading ATH:', err));
+        }
+
+        // ================================================================
+        // APEX V2.0: GROUP SUMMARY
+        // ================================================================
+        function loadGroupSummary() {
+            fetch('/api/group-summary')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        const grid = document.getElementById('groupSummaryGrid');
+                        grid.innerHTML = '';
+                        
+                        let totalIndicators = 0;
+                        
+                        data.data.forEach(group => {
+                            totalIndicators += group.total_indicators;
+                            
+                            const card = document.createElement('div');
+                            card.className = 'group-card';
+                            card.innerHTML = `
+                                <h4>${group.group_name}</h4>
+                                <div class="count">${group.active_indicators} / ${group.total_indicators}</div>
+                                <div class="desc">${group.description}</div>
+                                <div style="margin-top: 10px;">
+                                    <span class="status-badge ${group.is_active ? 'status-active' : 'status-inactive'}">
+                                        ${group.is_active ? 'ACTIVE' : 'INACTIVE'}
+                                    </span>
+                                </div>
+                            `;
+                            grid.appendChild(card);
+                        });
+                        
+                        document.getElementById('totalIndicators').textContent = `${totalIndicators} Total Indicators`;
+                    }
+                })
+                .catch(err => console.error('Error loading group summary:', err));
+        }
+
+        // ================================================================
+        // APEX V2.0: INDICATOR GROUPS
+        // ================================================================
+        function loadIndicatorGroups() {
+            fetch('/api/indicator-groups')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        const tbody = document.getElementById('indicatorGroupsTableBody');
+                        tbody.innerHTML = '';
+                        
+                        data.data.forEach(row => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${row.id}</td>
+                                <td>${row.name}</td>
+                                <td>${row.description}</td>
+                                <td><span class="status-badge ${row.is_active ? 'status-active' : 'status-inactive'}">${row.is_active ? 'ACTIVE' : 'INACTIVE'}</span></td>
+                                <td>${row.display_order}</td>
+                                <td>${row.created_at}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    }
+                })
+                .catch(err => console.error('Error loading indicator groups:', err));
+        }
+
+        // ================================================================
+        // APEX V2.0: INDICATORS CATALOG
+        // ================================================================
+        function loadIndicators() {
+            const groupId = document.getElementById('indicatorGroupFilter').value;
+            const url = groupId ? `/api/indicators?group_id=${groupId}` : '/api/indicators';
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const tbody = document.getElementById('indicatorsTableBody');
+                        tbody.innerHTML = '';
+                        
+                        document.getElementById('indicatorCount').textContent = `${data.count} Indicators`;
+                        
+                        if (data.data.length > 0) {
+                            data.data.forEach(row => {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td>${row.id}</td>
+                                    <td>${row.name}</td>
+                                    <td>${row.display_name}</td>
+                                    <td>${row.description}</td>
+                                    <td>${row.logic_base_id}</td>
+                                    <td>${row.group_name || 'Group ' + row.default_group_id}</td>
+                                    <td>${row.created_at}</td>
+                                `;
+                                tbody.appendChild(tr);
+                            });
+                        } else {
+                            tbody.innerHTML = '<tr><td colspan="7" class="no-data">No indicators found.</td></tr>';
+                        }
+                    }
+                })
+                .catch(err => console.error('Error loading indicators:', err));
+        }
+
+        // ================================================================
+        // APEX V2.0: INDICATOR CONFIGS
+        // ================================================================
+        function loadIndicatorConfigs() {
+            const groupId = document.getElementById('configGroupFilter').value;
+            const activeOnly = document.getElementById('configActiveFilter').value;
+            
+            let url = '/api/indicator-configs?limit=200';
+            if (groupId) url += `&group_id=${groupId}`;
+            if (activeOnly) url += `&active_only=${activeOnly}`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const tbody = document.getElementById('indicatorConfigsTableBody');
+                        tbody.innerHTML = '';
+                        
+                        document.getElementById('configCount').textContent = `${data.count} Configs`;
+                        
+                        if (data.data.length > 0) {
+                            data.data.forEach(row => {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td>${row.id}</td>
+                                    <td>${row.indicator_name}</td>
+                                    <td>${row.display_name}</td>
+                                    <td>${row.scope}</td>
+                                    <td><span class="status-badge ${row.is_active ? 'status-active' : 'status-inactive'}">${row.is_active ? 'ACTIVE' : 'INACTIVE'}</span></td>
+                                    <td>${row.group_name}</td>
+                                    <td>${row.display_order}</td>
+                                    <td>${row.logic_base_id}</td>
+                                    <td>${row.last_updated_at}</td>
+                                `;
+                                tbody.appendChild(tr);
+                            });
+                        } else {
+                            tbody.innerHTML = '<tr><td colspan="9" class="no-data">No configs found.</td></tr>';
+                        }
+                    }
+                })
+                .catch(err => console.error('Error loading indicator configs:', err));
+        }
+
+        // ================================================================
+        // APEX V2.0: EVALUATION SETTINGS
+        // ================================================================
+        function loadEvaluationSettings() {
+            fetch('/api/evaluation-settings')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const panel = document.getElementById('evalSettingsPanel');
+                        const settings = data.data;
+                        
+                        panel.innerHTML = `
+                            <div class="eval-setting">
+                                <div class="label">Interval Mode</div>
+                                <div class="value">${settings.bar_interval_mode || 'time_window'}</div>
+                            </div>
+                            <div class="eval-setting">
+                                <div class="label">Time Window</div>
+                                <div class="value">${settings.time_window_minutes || 15} min</div>
+                            </div>
+                            <div class="eval-setting">
+                                <div class="label">Last Evaluation</div>
+                                <div class="value">${settings.last_evaluation_at || 'Never'}</div>
+                            </div>
+                            <div class="eval-setting">
+                                <div class="label">Created</div>
+                                <div class="value">${settings.created_at || '--'}</div>
+                            </div>
+                            <div class="eval-setting">
+                                <div class="label">Updated</div>
+                                <div class="value">${settings.updated_at || '--'}</div>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(err => console.error('Error loading evaluation settings:', err));
+        }
+
+        // ================================================================
+        // APEX V2.0: AI ANALYSIS RESULTS
+        // ================================================================
+        function loadAIResults() {
+            fetch('/api/ai-analysis-results?limit=20')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const tbody = document.getElementById('aiResultsTableBody');
+                        
+                        document.getElementById('aiResultsCount').textContent = `${data.count} Results`;
+                        
+                        if (data.data.length > 0) {
+                            tbody.innerHTML = '';
+                            data.data.forEach(row => {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td>${row.id}</td>
+                                    <td>${row.timestamp}</td>
+                                    <td>${row.symbol || '--'}</td>
+                                    <td>${row.timeframe || '--'}</td>
+                                    <td>${row.recommendation || '--'}</td>
+                                    <td>${row.confidence_score ? row.confidence_score.toFixed(2) : '--'}</td>
+                                    <td>${row.trend_direction || '--'}</td>
+                                    <td>${row.trend_strength || '--'}</td>
+                                    <td>${row.risk_level || '--'}</td>
+                                    <td>${row.suggested_stop_loss || '--'}</td>
+                                    <td>${row.suggested_take_profit || '--'}</td>
+                                    <td>${row.bullish_signals || '--'}</td>
+                                    <td>${row.bearish_signals || '--'}</td>
+                                `;
+                                tbody.appendChild(tr);
+                            });
+                        } else {
+                            tbody.innerHTML = '<tr><td colspan="13" class="no-data">No AI analysis results yet. Run an evaluation cycle to populate this table.</td></tr>';
+                        }
+                    }
+                })
+                .catch(err => console.error('Error loading AI results:', err));
+        }
+        
+        // ================================================================
+        // INITIAL LOAD
+        // ================================================================
+        loadAllData();
+        
+        // Auto-refresh every 60 seconds
+        setInterval(loadAllData, 60000);
+    </script>
+</body>
+</html>

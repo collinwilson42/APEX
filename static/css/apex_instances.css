@@ -1,0 +1,594 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   APEX INSTANCE BROWSER V2.5 CSS - Matte Black Theme
+   
+   Matching right-panel database styling:
+   - Matte black backgrounds (#16181c, #0f1012)
+   - Subtle white borders (rgba(255,255,255,0.04-0.08))
+   - Clean monospace text (#c8ccd4)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.instance-browser {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    background: #16181c;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER WITH HAMBURGER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.instance-browser__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: rgba(18, 20, 24, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.instance-hamburger {
+    width: 34px;
+    height: 34px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px;
+    transition: all 0.15s ease;
+}
+
+.instance-hamburger:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.instance-hamburger--open {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.hamburger-line {
+    width: 14px;
+    height: 2px;
+    background: #8a8f98;
+    border-radius: 1px;
+    transition: all 0.2s ease;
+}
+
+.instance-hamburger:hover .hamburger-line {
+    background: #c8ccd4;
+}
+
+.instance-hamburger--open .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(4px, 4px);
+}
+
+.instance-hamburger--open .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+
+.instance-hamburger--open .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(4px, -4px);
+}
+
+.instance-selector {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.instance-selector:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.instance-selector__label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #e0e0e0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.instance-selector__status {
+    font-size: 9px;
+    font-weight: 600;
+    color: #5a5f68;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: 'SF Mono', Monaco, monospace;
+}
+
+.instance-selector__status--active {
+    color: #8a8f98;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DROPDOWN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.instance-dropdown {
+    position: absolute;
+    top: 55px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #16181c;
+    z-index: 100;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+    border-bottom: 1px solid transparent;
+    opacity: 0;
+}
+
+.instance-dropdown--open {
+    max-height: calc(100% - 55px);
+    overflow-y: auto;
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+    opacity: 1;
+}
+
+.instance-dropdown__content {
+    padding: 8px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ALGORITHM CARDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.algo-section-header {
+    font-size: 10px;
+    font-weight: 600;
+    color: #5a5f68;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 12px 14px 8px;
+    margin-top: 4px;
+}
+
+.algo-section-header--favorites {
+    color: #8a8f98;
+}
+
+.algo-section-header--archived {
+    color: #3a3f47;
+}
+
+.algo-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    margin: 4px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.algo-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.algo-card--selected {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.algo-card--archived {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.algo-card--archived:hover {
+    background: rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.04);
+}
+
+.algo-card__content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    flex: 1;
+}
+
+.algo-card__name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e0e0e0;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.algo-card__star {
+    color: #8a8f98;
+    margin-right: 4px;
+}
+
+.algo-card__symbol {
+    font-size: 10px;
+    color: #5a5f68;
+    font-family: 'SF Mono', Monaco, monospace;
+}
+
+.algo-card__time {
+    font-size: 10px;
+    color: #5a5f68;
+    white-space: nowrap;
+    margin-left: 12px;
+}
+
+.algo-empty {
+    padding: 24px 16px;
+    text-align: center;
+}
+
+.algo-empty__text {
+    font-size: 12px;
+    color: #5a5f68;
+    margin-bottom: 6px;
+}
+
+.algo-empty__hint {
+    font-size: 10px;
+    color: #3a3f47;
+}
+
+.algo-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.04);
+    margin: 8px 14px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTEXT MENU - Right Click Menu
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.algo-context-menu {
+    background: #1e2024;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+    min-width: 200px;
+    padding: 6px 0;
+    animation: contextMenuFadeIn 0.1s ease;
+}
+
+@keyframes contextMenuFadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.algo-context-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    color: #c8ccd4;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.algo-context-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.algo-context-item--danger {
+    color: #ff6b6b;
+}
+
+.algo-context-item--danger:hover {
+    background: rgba(255, 107, 107, 0.1);
+}
+
+.algo-context-icon {
+    font-size: 14px;
+    width: 20px;
+    text-align: center;
+}
+
+.algo-context-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 6px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABS - Matching database-tab-group style
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.instance-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 8px 8px;
+    background: rgba(18, 20, 24, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.instance-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 4px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.instance-tab:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.instance-tab--active {
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.instance-tab__icon {
+    font-size: 14px;
+    color: #5a5f68;
+    transition: color 0.15s ease;
+}
+
+.instance-tab--active .instance-tab__icon {
+    color: #e0e0e0;
+}
+
+.instance-tab__label {
+    font-size: 8px;
+    font-weight: 600;
+    color: #5a5f68;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.instance-tab--active .instance-tab__label {
+    color: #c8ccd4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB CONTENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.instance-content {
+    flex: 1;
+    overflow: auto;
+    padding: 0;
+    background: #16181c;
+    min-height: 0;
+}
+
+.instance-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 150px;
+    gap: 8px;
+    color: #5a5f68;
+    padding: 30px;
+    text-align: center;
+}
+
+.instance-empty__icon {
+    font-size: 32px;
+    color: #3a3f47;
+    margin-bottom: 12px;
+}
+
+.instance-empty__text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #8a8f98;
+}
+
+.instance-empty__hint {
+    font-size: 11px;
+    color: #5a5f68;
+    margin-top: 4px;
+}
+
+.instance-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 150px;
+    gap: 12px;
+}
+
+.instance-loading__spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #8a8f98;
+    border-radius: 50%;
+    animation: instance-spin 0.8s linear infinite;
+}
+
+.instance-loading__text {
+    font-size: 11px;
+    color: #5a5f68;
+}
+
+@keyframes instance-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATA TABLES - Matching database-table style exactly
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.instance-table-wrap {
+    width: 100%;
+    min-width: 100%;
+    overflow-x: auto;
+}
+
+.instance-table {
+    width: 100%;
+    min-width: 600px;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.instance-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.instance-table th {
+    background: linear-gradient(180deg, rgba(30, 32, 36, 0.98) 0%, rgba(22, 24, 28, 0.95) 100%);
+    color: #a4a9b3;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    white-space: nowrap;
+}
+
+.instance-table td {
+    padding: 8px 12px;
+    color: #c8ccd4;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
+    font-family: 'SF Mono', Monaco, monospace;
+    font-size: 10px;
+}
+
+.instance-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.instance-table tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.instance-table tbody tr:nth-child(even):hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.instance-table__row--placeholder td {
+    color: #3a3f47;
+    font-style: italic;
+    text-align: center;
+}
+
+.instance-table__hint {
+    padding: 12px;
+    text-align: center;
+    font-size: 10px;
+    color: #5a5f68;
+    background: rgba(0, 0, 0, 0.15);
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.instance-table__count {
+    padding: 6px 10px;
+    text-align: right;
+    font-size: 9px;
+    color: #5a5f68;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Cell colors - Matching database.css palette */
+.cell-bull, .cell--bull { color: #ADEBB3 !important; }
+.cell-bear, .cell--bear { color: #3A5F8A !important; }
+.cell-neutral, .cell--neutral { color: #A4A9B3 !important; }
+.cell-arrow, .cell--arrow { color: #8a8f98; font-weight: bold; text-align: center; }
+
+/* Row colors */
+.row--bull td { background: rgba(173, 235, 179, 0.04); }
+.row--bear td { background: rgba(58, 95, 138, 0.04); }
+
+/* Status badges - Matte style */
+.status-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.status-badge--pending { background: rgba(138, 143, 152, 0.15); color: #8a8f98; }
+.status-badge--open { background: rgba(173, 235, 179, 0.15); color: #ADEBB3; }
+.status-badge--closed { background: rgba(58, 95, 138, 0.15); color: #3A5F8A; }
+.status-badge--partial { background: rgba(138, 143, 152, 0.1); color: #8a8f98; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBAR - Matching database panel style
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.instance-dropdown--open::-webkit-scrollbar,
+.instance-content::-webkit-scrollbar,
+.instance-table-wrap::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.instance-dropdown--open::-webkit-scrollbar-track,
+.instance-content::-webkit-scrollbar-track,
+.instance-table-wrap::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.instance-dropdown--open::-webkit-scrollbar-thumb,
+.instance-content::-webkit-scrollbar-thumb,
+.instance-table-wrap::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.instance-dropdown--open::-webkit-scrollbar-thumb:hover,
+.instance-content::-webkit-scrollbar-thumb:hover,
+.instance-table-wrap::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.instance-content::-webkit-scrollbar-corner,
+.instance-table-wrap::-webkit-scrollbar-corner {
+    background: rgba(0, 0, 0, 0.2);
+}

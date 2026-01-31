@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligence Database - MT5 Meta Agent V10</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/database.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header - EXACT MATCH TO DASHBOARD -->
+        <div class="header">
+            <div class="header-left">
+                <button id="menuToggle" class="menu-toggle">
+                    <img src="{{ url_for('static', filename='img/dropdown_icon.png') }}" alt="Menu" class="dropdown-icon">
+                </button>
+                <h1>MT5 META AGENT <span class="version">V10</span></h1>
+            </div>
+            <div class="header-right">
+                <div id="agentStatus" class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span class="status-text" id="statusText">STOPPED</span>
+                    <img src="{{ url_for('static', filename='img/live_active.gif') }}" alt="LIVE" class="status-gif" id="statusGif" style="display: none; height: 14px; width: auto; margin: 0;">
+                </div>
+                <button id="toggleAgent" class="btn btn-primary">START AGENT</button>
+            </div>
+        </div>
+
+        <!-- Dropdown Navigation Menu -->
+        <nav id="dropdownMenu" class="dropdown-menu">
+            <a href="/" class="menu-item">
+                <span class="menu-icon">⟢</span>
+                <span>Dashboard</span>
+            </a>
+            <a href="/chart-data" class="menu-item active">
+                <span class="menu-icon">⟢</span>
+                <span>Database</span>
+            </a>
+            <a href="/profile-manager" class="menu-item">
+                <span class="menu-icon">⟢</span>
+                <span>Profile Manager</span>
+            </a>
+            <a href="/api-skills" class="menu-item">
+                <span class="menu-icon">⟢</span>
+                <span>API Skills Manager</span>
+            </a>
+            <a href="/backtest-results" class="menu-item">
+                <span class="menu-icon">⟢</span>
+                <span>Backtest Results</span>
+            </a>
+            <a href="/settings" class="menu-item">
+                <span class="menu-icon">⟢</span>
+                <span>Settings</span>
+            </a>
+        </nav>
+
+        <!-- Main Content Area -->
+        <div id="mainContent" class="main-content">
+            
+            <!-- Intelligence Database Hero Panel -->
+            <div class="intelligence-hero">
+                <div class="hero-left">
+                    <!-- Master Expand Button (V1.0331 / V1.09 / V1.10) - Enhanced with gold border -->
+                    <button class="master-expand-btn-enhanced" id="masterExpand">
+                        <img src="{{ url_for('static', filename='img/main_extendo.gif') }}" alt="Expand" class="expand-gif-main" id="masterExpandGif">
+                    </button>
+                    <div class="hero-title-section">
+                        <div class="hero-title-row">
+                            <h2>INTELLIGENCE DATABASE</h2>
+                        </div>
+                        <p class="hero-subtitle">Real-Time Market Data & Indicators | 15-Minute Intervals</p>
+                    </div>
+                </div>
+                <div class="hero-right">
+                    <!-- Timeframe Toggle (V1.036 / V1.081) -->
+                    <div class="timeframe-toggle">
+                        <button class="tf-btn" id="tf1m" data-timeframe="1m">1m</button>
+                        <button class="tf-btn active" id="tf15m" data-timeframe="15m">15m</button>
+                    </div>
+                    <!-- Settings Icon (V1.09) -->
+                    <button class="settings-btn" title="Settings">
+                        <img src="{{ url_for('static', filename='img/settings.png') }}" alt="Settings" class="settings-icon">
+                    </button>
+                </div>
+            </div>
+
+            <!-- ================================================================ -->
+            <!-- PROFILE MANAGEMENT & RISK MANAGEMENT DUAL PANEL (V2.0) -->
+            <!-- Elegant Gold Gradients | Theme Matching | All Features -->
+            <!-- ================================================================ -->
+            
+            <div class="data-section" id="profileRiskSection">
+                
+                <!-- Section Header - Matches Other Database Sections -->
+                <div class="section-header">
+                    <div class="section-left">
+                        <h3>PROFILE & RISK MANAGEMENT</h3>
+                        <span class="section-price" id="profileStatus">READY</span>
+                    </div>
+                    <div class="section-right">
+                        <!-- Import All Data Button -->
+                        <button class="icon-btn" id="importAllDataBtn" title="Import Historical Data">
+                            <img src="{{ url_for('static', filename='img/imports.png') }}" alt="Import" class="action-icon">
+                        </button>
+                        <!-- Section Expand Button -->
+                        <button class="section-expand-btn" data-section="profileRisk">
+                            <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Expand" class="expand-gif-small section-extendo" data-state="up">
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Section Body with 3-Column Layout -->
+                <div class="section-body full" id="profileRiskBody">
+                    
+                    <!-- 3-Column Container with Gold Dividers -->
+                    <div class="triple-panel-container">
+                        
+                        <!-- ======================================================== -->
+                        <!-- LEFT COLUMN (1/3): FILE WINDOWS HORIZONTAL              -->
+                        <!-- ======================================================== -->
+                        <div class="file-windows-column">
+                            
+                            <!-- 4×1 Horizontal Strip of File Windows -->
+                            <div class="file-windows-horizontal">
+                                
+                                <!-- Profile Files Window -->
+                                <div class="file-window-vertical" data-folder="profiles">
+                                    <div class="fw-header">PROFILE FILES</div>
+                                    <div class="fw-body">
+                                        <div class="fw-count" id="profileCount">0 files</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Input Files Window -->
+                                <div class="file-window-vertical" data-folder="inputs">
+                                    <div class="fw-header">INPUT FILES</div>
+                                    <div class="fw-body">
+                                        <div class="fw-count" id="inputCount">0 files</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Prompt Files Window -->
+                                <div class="file-window-vertical" data-folder="prompts">
+                                    <div class="fw-header">PROMPT FILES</div>
+                                    <div class="fw-body">
+                                        <div class="fw-count" id="promptCount">0 files</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Skill Files Window -->
+                                <div class="file-window-vertical" data-folder="skills">
+                                    <div class="fw-header">SKILL FILES</div>
+                                    <div class="fw-body">
+                                        <div class="fw-count" id="skillCount">0 files</div>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                            
+                        </div>
+                        
+                        <!-- Gold Gradient Divider #1 -->
+                        <div class="gold-divider"></div>
+                        
+                        <!-- ======================================================== -->
+                        <!-- CENTER COLUMN (1/3): SEARCH + RESULTS                   -->
+                        <!-- ======================================================== -->
+                        <div class="search-results-column">
+                            
+                            <!-- Search Section -->
+                            <div class="search-header-section">
+                                <div class="search-input-group">
+                                    <input type="text" 
+                                           id="pmSearchBar" 
+                                           class="search-input" 
+                                           placeholder="Select a file category..."
+                                           autocomplete="off">
+                                    <button class="search-btn" id="pmSearchBtn">
+                                        <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Search" class="search-extendo-icon">
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Results Panel -->
+                            <div class="results-display-panel" id="pmSearchResults">
+                                <div class="results-empty-state">
+                                    <p>Select a file category to browse</p>
+                                </div>
+                            </div>
+                            
+                        </div>
+                        
+                        <!-- Gold Gradient Divider #2 -->
+                        <div class="gold-divider"></div>
+                        
+                        <!-- ======================================================== -->
+                        <!-- RIGHT COLUMN (1/3): RISK MANAGEMENT                     -->
+                        <!-- ======================================================== -->
+                        <div class="risk-management-column">
+                            
+                            <!-- Column Title -->
+                            <div class="column-title">RISK MANAGEMENT</div>
+                            
+                            <!-- Sliders Section -->
+                            <div class="risk-sliders-section">
+                                
+                                <!-- Risk/Reward Slider -->
+                                <div class="risk-slider-item">
+                                    <label class="risk-label">RISK / REWARD LEVEL</label>
+                                    <div class="risk-slider-container">
+                                        <input type="range" 
+                                               min="1" 
+                                               max="100" 
+                                               value="50" 
+                                               class="risk-slider" 
+                                               id="rmRiskRewardLevel">
+                                        <span class="risk-value" id="rmRiskRewardValue">50</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Max Drawdown Slider -->
+                                <div class="risk-slider-item">
+                                    <label class="risk-label">MAX DAILY DRAWDOWN</label>
+                                    <div class="risk-slider-container">
+                                        <input type="range" 
+                                               min="1" 
+                                               max="20" 
+                                               value="3" 
+                                               class="risk-slider" 
+                                               id="rmMaxDrawdown">
+                                        <span class="risk-value" id="rmDrawdownValue">3%</span>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                            
+                            <!-- SL/TP Grid -->
+                            <div class="sl-tp-grid-compact">
+                                
+                                <!-- Stop Loss Column -->
+                                <div class="sl-column-compact">
+                                    <h5 class="grid-title-compact">STOP LOSS</h5>
+                                    
+                                    <div class="sl-tp-row-compact">
+                                        <span class="row-label">SL1:</span>
+                                        <select class="row-select">
+                                            <option value="atr">ATR</option>
+                                            <option value="pips">Pips</option>
+                                        </select>
+                                        <input type="number" step="0.1" value="1.5" class="row-input">
+                                    </div>
+                                    
+                                    <div class="sl-tp-row-compact">
+                                        <span class="row-label">SL2:</span>
+                                        <select class="row-select">
+                                            <option value="atr" selected>ATR</option>
+                                            <option value="pips">Pips</option>
+                                        </select>
+                                        <input type="number" step="0.1" value="2.0" class="row-input">
+                                    </div>
+                                    
+                                    <div class="sl-tp-row-compact">
+                                        <span class="row-label">SL3:</span>
+                                        <select class="row-select">
+                                            <option value="atr" selected>ATR</option>
+                                            <option value="pips">Pips</option>
+                                        </select>
+                                        <input type="number" step="0.1" value="2.5" class="row-input">
+                                    </div>
+                                    
+                                    <div class="sl-tp-row-compact">
+                                        <span class="row-label">SL4:</span>
+                                        <select class="row-select">
+                                            <option value="atr" selected>ATR</option>
+                                            <option value="pips">Pips</option>
+                                        </select>
+                                        <input type="number" step="0.1" value="3.0" class="row-input">
+                                    </div>
+                                    
+                                    <div class="sl-tp-row-compact">
+                                        <span class="row-label">SL5:</span>
+                                        <select class="row-select">
+                                            <option value="trail" selected>Trail</option>
+                                            <option value="atr">ATR</option>
+                                        </select>
+                                        <input type="number" step="0.1" value="1.0" class="row-input">
+                                    </div>
+                                    
+                                </div>
+                                
+                                <!-- Take Profit Column -->
+                                <div class="tp-column-compact">
+                                    <h5 class="grid-title-compact">TAKE PROFIT</h5>
+                                    
+                                    <div class="sl-tp-row-compact">
+                                        <span class="row-label">TP1:</span>
+                                        <select class="row-select">
+                                            <option value="atr" selected>ATR</option>
+                                            <option value="rr">R:R</option>
+                                        </select>
+                                        <input type="number" step="0.1" value="1.5" class="row-input">
+                                    </div>
+                                    
+                                    <div class="sl-tp-row-compact">
+                                        <span class="row-label">TP2:</span>
+                                        <select class="row-select">
+                                            <option value="atr" selected>ATR</option>
+                                            <option value="rr">R:R</option>
+                                        </select>
+                                        <input type="number" step="0.1" value="3.0" class="row-input">
+                                    </div>
+                                    
+                                    <div class="sl-tp-row-compact">
+                                        <span class="row-label">TP3:</span>
+                                        <select class="row-select">
+                                            <option value="atr" selected>ATR</option>
+                                            <option value="rr">R:R</option>
+                                        </select>
+                                        <input type="number" step="0.1" value="5.0" class="row-input">
+                                    </div>
+                                    
+                                    <div class="sl-tp-row-compact">
+                                        <span class="row-label">TP4:</span>
+                                        <select class="row-select">
+                                            <option value="atr" selected>ATR</option>
+                                            <option value="rr">R:R</option>
+                                        </select>
+                                        <input type="number" step="0.1" value="8.0" class="row-input">
+                                    </div>
+                                    
+                                    <div class="sl-tp-row-compact">
+                                        <span class="row-label">TP5:</span>
+                                        <select class="row-select">
+                                            <option value="trail" selected>Trail</option>
+                                            <option value="atr">ATR</option>
+                                        </select>
+                                        <input type="number" step="0.1" value="1.5" class="row-input">
+                                    </div>
+                                    
+                                </div>
+                                
+                            </div>
+                            
+                        </div>
+                        
+                    </div>
+                    
+                </div>
+
+            <!-- Core Market Data Section (V1.031 / V1.091) -->
+            <div class="data-section" id="coreSection">
+                <div class="section-header">
+                    <div class="section-left">
+                        <h3>CORE MARKET DATA</h3>
+                        <span class="section-price" id="corePrice">--</span>
+                    </div>
+                    <div class="section-right">
+                        <!-- Import/Export Icons (V1.0341 / V1.09) -->
+                        <button class="icon-btn" title="Import Data">
+                            <img src="{{ url_for('static', filename='img/imports.png') }}" alt="Import" class="action-icon">
+                        </button>
+                        <button class="icon-btn" title="Export Data">
+                            <img src="{{ url_for('static', filename='img/exports.png') }}" alt="Export" class="action-icon">
+                        </button>
+                        <!-- Section Expand Button (V1.0332 / V1.09) -->
+                        <button class="section-expand-btn" data-section="core">
+                            <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Expand" class="expand-gif-small section-extendo" data-state="up">
+                        </button>
+                    </div>
+                </div>
+                <div class="section-body partial" id="coreBody">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>SYMBOL</th>
+                                    <th>OPEN</th>
+                                    <th>HIGH</th>
+                                    <th>LOW</th>
+                                    <th>CLOSE</th>
+                                    <th>VOLUME</th>
+                                </tr>
+                            </thead>
+                            <tbody id="coreTableBody">
+                                <tr>
+                                    <td colspan="7" class="no-data">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="table-depth-gradient"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Basic Indicators Section (V1.032 / V1.091) -->
+            <div class="data-section" id="basicSection">
+                <div class="section-header">
+                    <div class="section-left">
+                        <h3>BASIC INDICATORS</h3>
+                        <span class="section-price" id="basicPrice">--</span>
+                    </div>
+                    <div class="section-right">
+                        <button class="icon-btn" title="Import Data">
+                            <img src="{{ url_for('static', filename='img/imports.png') }}" alt="Import" class="action-icon">
+                        </button>
+                        <button class="icon-btn" title="Export Data">
+                            <img src="{{ url_for('static', filename='img/exports.png') }}" alt="Export" class="action-icon">
+                        </button>
+                        <button class="section-expand-btn" data-section="basic">
+                            <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Expand" class="expand-gif-small section-extendo" data-state="up">
+                        </button>
+                    </div>
+                </div>
+                <div class="section-body partial" id="basicBody">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>ATR 14</th>
+                                    <th>ATR 50 AVG</th>
+                                    <th>ATR RATIO</th>
+                                    <th>EMA SHORT</th>
+                                    <th>EMA MEDIUM</th>
+                                    <th>EMA DISTANCE</th>
+                                    <th>SUPERTREND</th>
+                                </tr>
+                            </thead>
+                            <tbody id="basicTableBody">
+                                <tr>
+                                    <td colspan="8" class="no-data">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="table-depth-gradient"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fibonacci Data Section (V2.021) -->
+            <div class="data-section" id="fibonacciSection">
+                <div class="section-header">
+                    <div class="section-left">
+                        <h3>FIBONACCI DATA</h3>
+                        <span class="section-price" id="fibonacciPrice">--</span>
+                    </div>
+                    <div class="section-right">
+                        <button class="icon-btn" title="Import Data">
+                            <img src="{{ url_for('static', filename='img/imports.png') }}" alt="Import" class="action-icon">
+                        </button>
+                        <button class="icon-btn" title="Export Data">
+                            <img src="{{ url_for('static', filename='img/exports.png') }}" alt="Export" class="action-icon">
+                        </button>
+                        <button class="section-expand-btn" data-section="fibonacci">
+                            <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Expand" class="expand-gif-small section-extendo" data-state="up">
+                        </button>
+                    </div>
+                </div>
+                <div class="section-body partial" id="fibonacciBody">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>ZONE</th>
+                                    <th>GOLDEN ZONE</th>
+                                    <th>MULTIPLIER</th>
+                                    <th>PIVOT HIGH</th>
+                                    <th>PIVOT LOW</th>
+                                    <th>FIB 0.382</th>
+                                    <th>FIB 0.618</th>
+                                    <th>FIB 0.786</th>
+                                    <th>DISTANCE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fibonacciTableBody">
+                                <tr>
+                                    <td colspan="10" class="no-data">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="table-depth-gradient"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATH Tracking Section (V2.032) -->
+            <div class="data-section" id="athSection">
+                <div class="section-header">
+                    <div class="section-left">
+                        <h3>ATH TRACKING</h3>
+                        <span class="section-price" id="athPrice">--</span>
+                    </div>
+                    <div class="section-right">
+                        <button class="icon-btn" title="Import Data">
+                            <img src="{{ url_for('static', filename='img/imports.png') }}" alt="Import" class="action-icon">
+                        </button>
+                        <button class="icon-btn" title="Export Data">
+                            <img src="{{ url_for('static', filename='img/exports.png') }}" alt="Export" class="action-icon">
+                        </button>
+                        <button class="section-expand-btn" data-section="ath">
+                            <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Expand" class="expand-gif-small section-extendo" data-state="up">
+                        </button>
+                    </div>
+                </div>
+                <div class="section-body partial" id="athBody">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>CURRENT ATH</th>
+                                    <th>CLOSE</th>
+                                    <th>DISTANCE PTS</th>
+                                    <th>DISTANCE %</th>
+                                    <th>MULTIPLIER</th>
+                                    <th>ZONE</th>
+                                    <th>PERCENTILE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="athTableBody">
+                                <tr>
+                                    <td colspan="8" class="no-data">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="table-depth-gradient"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div>MT5 Meta Agent V10 - Intelligence Database</div>
+            <div>Last Update: <span id="footerUpdate">-</span></div>
+            <div>Connection: <span id="connectionStatus" class="conn-disconnected">DISCONNECTED</span></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/database.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/profile_manager.js') }}"></script>
+</body>
+</html>
+
+    <!-- IMPORT DATA MODAL DIALOG (V1.1) -->
+    <div id="importModal" class="import-modal" style="display: none;">
+        <div class="import-modal-overlay" id="importModalOverlay"></div>
+        <div class="import-modal-content">
+            
+            <div class="import-modal-header">
+                <h3>IMPORT HISTORICAL DATA</h3>
+                <button class="import-modal-close" id="importModalClose">×</button>
+            </div>
+            
+            <div class="import-modal-body">
+                
+                <!-- Bar Count Input -->
+                <div class="import-input-group">
+                    <label for="importBarCount">Historical Bars to Import</label>
+                    <input type="number" 
+                           id="importBarCount" 
+                           min="1000" 
+                           max="100000" 
+                           value="50000" 
+                           step="1000"
+                           class="import-input">
+                    <span class="import-help-text">Recommended: 50,000 (≈20 days of 15m data)</span>
+                </div>
+                
+                <!-- Timeframe Selection -->
+                <div class="import-input-group">
+                    <label>Timeframes to Import</label>
+                    <div class="import-checkbox-group">
+                        <label class="import-checkbox-label">
+                            <input type="checkbox" id="import1m" checked>
+                            <span>1 Minute</span>
+                        </label>
+                        <label class="import-checkbox-label">
+                            <input type="checkbox" id="import15m" checked>
+                            <span>15 Minute</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Clear Database Option -->
+                <div class="import-input-group">
+                    <label class="import-checkbox-label import-warning">
+                        <input type="checkbox" id="importClearData">
+                        <span>Clear existing data before import</span>
+                    </label>
+                    <span class="import-warning-text">⚠️ This action cannot be undone</span>
+                </div>
+                
+                <!-- Progress Bar (hidden initially) -->
+                <div id="importProgress" class="import-progress" style="display: none;">
+                    <div class="import-progress-bar">
+                        <div class="import-progress-fill" id="importProgressFill"></div>
+                    </div>
+                    <div class="import-progress-text" id="importProgressText">Starting import...</div>
+                </div>
+                
+            </div>
+            
+            <div class="import-modal-footer">
+                <button class="import-btn-cancel" id="importBtnCancel">Cancel</button>
+                <button class="import-btn-start" id="importBtnStart">Import Data</button>
+            </div>
+            
+        </div>
+    </div>
+

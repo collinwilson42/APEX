@@ -1,0 +1,810 @@
+/* ============================================================================
+   MT5 META AGENT V11 - SETTINGS PAGE STYLESHEET
+   V11.2 - V2.031 UI REFINEMENT: Elite design with gradients and golden glow
+   ============================================================================ */
+
+/* ============================================================================
+   TIER TABS NAVIGATION
+   ============================================================================ */
+
+.tier-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--steel-blue);
+    padding-bottom: 0;
+}
+
+.tier-tab {
+    background: linear-gradient(135deg, var(--navy-royal) 0%, #111E2C 100%);
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--matte-white);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 16px 28px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.tier-tab:hover {
+    background: linear-gradient(135deg, #111E2C 0%, var(--steel-blue) 100%);
+    border-bottom-color: var(--gold-dark);
+}
+
+.tier-tab.active {
+    background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold-light) 100%);
+    border-bottom-color: var(--gold-light);
+    color: var(--matte-black);
+    box-shadow: 0 4px 12px rgba(196, 177, 87, 0.3);
+}
+
+.tier-badge {
+    font-size: 10px;
+    font-weight: 400;
+    opacity: 0.8;
+    letter-spacing: 0.5px;
+}
+
+/* ============================================================================
+   SETTINGS CONTAINER
+   ============================================================================ */
+
+.settings-container {
+    background: var(--navy-royal);
+    border: 2px solid var(--steel-blue);
+    border-radius: 12px;
+    padding: 32px;
+    margin-bottom: 24px;
+}
+
+.tier-content {
+    display: none;
+}
+
+.tier-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================================
+   SETTINGS SECTIONS
+   ============================================================================ */
+
+.settings-section {
+    background: #111E2C;
+    border: 1px solid var(--steel-blue);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.settings-section .section-header {
+    background: linear-gradient(90deg, var(--navy-royal) 0%, #111E2C 100%);
+    border-bottom: 1px solid var(--steel-blue);
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.settings-section .section-header:hover {
+    background: linear-gradient(90deg, #111E2C 0%, var(--steel-blue) 100%);
+}
+
+.settings-section .section-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--gold-light);
+    letter-spacing: 1.5px;
+    margin: 0;
+}
+
+.section-collapse {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    transition: transform 0.3s ease;
+}
+
+.section-extendo {
+    height: 24px;
+    width: auto;
+    transition: transform 0.3s ease;
+}
+
+.section-extendo[data-state="down"] {
+    transform: rotate(180deg);
+}
+
+.section-body {
+    padding: 24px;
+    max-height: 2000px;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    overflow: hidden;
+}
+
+.section-body.collapsed {
+    max-height: 0;
+    padding: 0 24px;
+}
+
+/* ============================================================================
+   SETTINGS GRID - V2.031 VISUAL OVERHAUL
+   ============================================================================ */
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+}
+
+.setting-item {
+    /* V2.031: Steel-blue gradient background */
+    background: linear-gradient(135deg, #3A5F8A 0%, #0A2540 100%);
+    
+    /* V2.031: Gold border instead of steel-blue */
+    border: 2px solid #C4B157;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    
+    /* V2.031: Golden glow effect */
+    box-shadow: 
+        inset 0 0 20px rgba(196, 177, 87, 0.2),  /* Inner golden glow */
+        0 0 30px rgba(196, 177, 87, 0.15);        /* Outer aura */
+}
+
+.setting-item:hover {
+    border-color: #C4B157;
+    /* V2.031: Intensified glow on hover */
+    box-shadow: 
+        inset 0 0 25px rgba(196, 177, 87, 0.3),
+        0 0 40px rgba(196, 177, 87, 0.25);
+}
+
+.setting-item.modified {
+    border-color: var(--gold-light);
+    background: linear-gradient(135deg, #3A5F8A 0%, #0A2540 100%);
+    /* Enhanced glow for modified state */
+    box-shadow: 
+        inset 0 0 30px rgba(196, 177, 87, 0.4),
+        0 0 50px rgba(196, 177, 87, 0.35);
+}
+
+.setting-item label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gold-light);
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.setting-description {
+    font-size: 12px;
+    /* V2.031: Changed to matte white for better contrast */
+    color: #F2F3F4;
+    margin-bottom: 16px;
+    line-height: 1.4;
+}
+
+/* ============================================================================
+   INPUT CONTROLS
+   ============================================================================ */
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.setting-input {
+    flex: 1;
+    background: var(--matte-white);
+    border: 2px solid var(--gold-light);
+    border-radius: 6px;
+    color: var(--matte-black);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 14px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 12px rgba(196, 177, 87, 0.4);
+}
+
+.setting-input:focus {
+    outline: none;
+    border-color: var(--gold-light);
+    box-shadow: 0 0 16px rgba(196, 177, 87, 0.6);
+}
+
+.setting-input.modified {
+    border-color: var(--gold-light);
+    background: var(--matte-white);
+    box-shadow: 0 0 16px rgba(196, 177, 87, 0.6);
+}
+
+.input-range {
+    font-size: 11px;
+    /* V2.031: Changed to matte white */
+    color: #F2F3F4;
+    font-weight: 500;
+    min-width: 70px;
+    text-align: right;
+}
+
+/* Slider Input */
+.setting-slider {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--matte-white);
+    border: 2px solid var(--gold-light);
+    outline: none;
+    -webkit-appearance: none;
+    box-shadow: 0 0 12px rgba(196, 177, 87, 0.4);
+}
+
+.setting-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--gold-light);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.setting-slider::-webkit-slider-thumb:hover {
+    background: var(--gold-mid);
+    box-shadow: 0 0 8px rgba(196, 177, 87, 0.5);
+}
+
+.setting-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--gold-light);
+    cursor: pointer;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.slider-value {
+    font-size: 14px;
+    color: var(--gold-light);
+    font-weight: 600;
+    min-width: 50px;
+    text-align: center;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 54px;
+    height: 28px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--matte-white);
+    border: 2px solid var(--gold-light);
+    transition: 0.3s;
+    border-radius: 28px;
+    box-shadow: 0 0 12px rgba(196, 177, 87, 0.4);
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--navy-royal);
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--gold-dark);
+    border-color: var(--gold-light);
+    box-shadow: 0 0 16px rgba(196, 177, 87, 0.6);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+    background-color: var(--gold-light);
+}
+
+/* ============================================================================
+   SETTING FOOTER - V2.031 TEXT COLOR UPDATE
+   ============================================================================ */
+
+.setting-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(196, 177, 87, 0.2);
+}
+
+.default-value {
+    font-size: 11px;
+    /* V2.031: Changed to matte white */
+    color: #F2F3F4;
+    font-style: italic;
+}
+
+/* V2.031: RESET BUTTON REDESIGN */
+.reset-btn {
+    /* White background with gold text */
+    background: #F2F3F4;
+    border: 1px solid #C4B157;
+    color: #C4B157;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
+}
+
+.reset-btn:hover {
+    /* Gold tint on hover */
+    background: rgba(196, 177, 87, 0.1);
+    border: 2px solid #B4A84B;
+    color: #B4A84B;
+}
+
+/* ============================================================================
+   ACTION BUTTONS
+   ============================================================================ */
+
+.settings-actions {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.settings-action-btn {
+    background: linear-gradient(135deg, var(--navy-royal) 0%, var(--steel-blue) 100%);
+    border: 2px solid var(--steel-blue);
+    color: var(--matte-white);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.settings-action-btn img {
+    height: 16px;
+    width: auto;
+}
+
+.settings-action-btn:hover {
+    border-color: var(--gold-light);
+    background: linear-gradient(135deg, var(--steel-blue) 0%, var(--gold-dark) 100%);
+    box-shadow: 0 4px 12px rgba(196, 177, 87, 0.3);
+}
+
+/* ============================================================================
+   PROFILE DROPDOWN (V2.032)
+   ============================================================================ */
+
+.profile-dropdown-container {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-arrow {
+    font-size: 10px;
+    margin-left: 4px;
+    transition: transform 0.3s ease;
+}
+
+.profile-dropdown-container.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.profile-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background: var(--navy-royal);
+    border: 2px solid var(--gold-light);
+    border-radius: 8px;
+    min-width: 280px;
+    max-height: 400px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
+                0 0 40px rgba(196, 177, 87, 0.2);
+    z-index: 1000;
+    animation: slideDown 0.3s ease;
+}
+
+.profile-dropdown-menu.show {
+    display: block;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.profile-create-option {
+    padding: 16px 20px;
+    background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold-light) 100%);
+    color: var(--matte-black);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    border-radius: 6px 6px 0 0;
+}
+
+.profile-create-option:hover {
+    background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold-mid) 100%);
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.create-icon {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.profile-divider {
+    height: 2px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        var(--gold-light) 50%, 
+        transparent 100%);
+    margin: 0;
+}
+
+.profile-list {
+    padding: 8px 0;
+}
+
+.profile-item {
+    padding: 12px 20px;
+    color: var(--matte-white);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.profile-item:hover {
+    background: linear-gradient(90deg, 
+        var(--steel-blue) 0%, 
+        rgba(58, 95, 138, 0.3) 100%);
+    padding-left: 24px;
+}
+
+.profile-item.active {
+    background: linear-gradient(90deg, 
+        rgba(196, 177, 87, 0.2) 0%, 
+        rgba(196, 177, 87, 0.05) 100%);
+    border-left: 3px solid var(--gold-light);
+    font-weight: 600;
+}
+
+.profile-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--gold-light);
+    background: rgba(196, 177, 87, 0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+}
+
+/* ============================================================================
+   PROFILE CREATION MODAL (V2.033)
+   ============================================================================ */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-overlay.show {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--navy-royal);
+    border: 3px solid var(--gold-light);
+    border-radius: 12px;
+    padding: 32px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6),
+                0 0 60px rgba(196, 177, 87, 0.3);
+    animation: scaleIn 0.3s ease;
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modal-header {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.modal-body {
+    margin-bottom: 24px;
+}
+
+.modal-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--matte-white);
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+}
+
+.modal-input {
+    width: 100%;
+    background: var(--matte-white);
+    border: 2px solid var(--gold-light);
+    border-radius: 6px;
+    color: var(--matte-black);
+    font-size: 16px;
+    font-weight: 500;
+    padding: 12px 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 12px rgba(196, 177, 87, 0.4);
+    box-sizing: border-box;
+}
+
+.modal-input:focus {
+    outline: none;
+    border-color: var(--gold-light);
+    box-shadow: 0 0 20px rgba(196, 177, 87, 0.6);
+}
+
+.modal-description {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 16px;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.modal-error {
+    display: none;
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid #ef4444;
+    color: #fca5a5;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-top: 12px;
+}
+
+.modal-error.show {
+    display: block;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+.modal-btn {
+    padding: 12px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid;
+}
+
+.modal-btn-cancel {
+    background: transparent;
+    border-color: var(--steel-blue);
+    color: var(--matte-white);
+}
+
+.modal-btn-cancel:hover {
+    background: rgba(58, 95, 138, 0.2);
+    border-color: var(--gold-light);
+}
+
+.modal-btn-create {
+    background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold-light) 100%);
+    border-color: var(--gold-light);
+    color: var(--matte-black);
+}
+
+.modal-btn-create:hover {
+    background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold-mid) 100%);
+    box-shadow: 0 4px 16px rgba(196, 177, 87, 0.4);
+}
+
+.modal-btn-create:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ============================================================================
+   STATUS MESSAGE
+   ============================================================================ */
+
+.status-message {
+    background: var(--navy-royal);
+    border: 2px solid var(--steel-blue);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.status-message.success {
+    border-color: var(--success);
+    background: linear-gradient(135deg, var(--navy-royal) 0%, rgba(74, 222, 128, 0.1) 100%);
+}
+
+.status-message.error {
+    border-color: var(--danger);
+    background: linear-gradient(135deg, var(--navy-royal) 0%, rgba(239, 68, 68, 0.1) 100%);
+}
+
+.status-message .status-icon {
+    font-size: 20px;
+}
+
+.status-message .status-text {
+    font-size: 14px;
+    color: var(--matte-white);
+    font-weight: 500;
+}
+
+/* ============================================================================
+   COMING SOON PLACEHOLDER
+   ============================================================================ */
+
+.coming-soon {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.coming-soon h3 {
+    font-size: 24px;
+    color: var(--gold-light);
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+}
+
+.coming-soon p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.coming-soon .note {
+    font-style: italic;
+    color: var(--steel-blue);
+    margin-top: 20px;
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+
+@media (max-width: 1200px) {
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .tier-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .tier-tab {
+        flex: 1;
+        min-width: 150px;
+    }
+    
+    .settings-container {
+        padding: 20px;
+    }
+    
+    .settings-actions {
+        flex-direction: column;
+    }
+    
+    .profile-dropdown-menu {
+        right: auto;
+        left: 0;
+    }
+}

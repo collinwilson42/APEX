@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Radial Nodebase - Medium | MT5 META AGENT</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #F2F3F4;
+            color: #0A2540;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Top Navigation Bar */
+        #topNav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(242, 243, 244, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #BB9847;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1000;
+        }
+
+        #dropdownIcon {
+            width: 40px;
+            height: 40px;
+            background: #F2F3F4;
+            border: 2px solid #BB9847;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 24px;
+            color: #BB9847;
+        }
+
+        #dropdownIcon:hover {
+            background: #BB9847;
+            color: #F2F3F4;
+            transform: scale(1.1);
+        }
+
+        #searchBar {
+            flex: 1;
+            margin: 0 20px;
+            height: 40px;
+            background: rgba(242, 243, 244, 0.9);
+            border: 1px solid #BB9847;
+            border-radius: 20px;
+            padding: 0 20px;
+            font-size: 14px;
+            color: #0A2540;
+        }
+
+        #searchBar::placeholder {
+            color: rgba(10, 37, 64, 0.5);
+        }
+
+        .info-badge {
+            padding: 8px 16px;
+            background: rgba(187, 152, 71, 0.2);
+            border: 1px solid #BB9847;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #BB9847;
+            font-weight: bold;
+        }
+
+        /* Dropdown Menu */
+        #dropdownMenu {
+            position: absolute;
+            top: 65px;
+            left: 20px;
+            background: #F2F3F4;
+            border: 2px solid #BB9847;
+            border-radius: 8px;
+            padding: 10px 0;
+            min-width: 200px;
+            box-shadow: 0 4px 15px rgba(187, 152, 71, 0.3);
+            display: none;
+            z-index: 1001;
+        }
+
+        .dropdown-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #0A2540;
+            text-decoration: none;
+            display: block;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(187, 152, 71, 0.2);
+        }
+
+        /* Main Canvas */
+        #mainCanvas {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #F2F3F4;
+        }
+
+        #radialPlot {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Legend Panel */
+        #legendPanel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(242, 243, 244, 0.95);
+            border: 2px solid #BB9847;
+            border-radius: 12px;
+            padding: 20px;
+            min-width: 250px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 900;
+        }
+
+        .legend-title {
+            font-weight: bold;
+            color: #BB9847;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #0A2540;
+        }
+
+        .legend-label {
+            font-size: 13px;
+            color: #0A2540;
+        }
+
+        .legend-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(187, 152, 71, 0.3);
+        }
+
+        .ring-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .ring-item:hover {
+            background: rgba(187, 152, 71, 0.1);
+        }
+
+        .ring-badge {
+            background: rgba(10, 37, 64, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        /* Node Details Tooltip */
+        .node-tooltip {
+            position: fixed;
+            background: rgba(242, 243, 244, 0.98);
+            border: 2px solid #BB9847;
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 300px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: none;
+            z-index: 2000;
+            pointer-events: none;
+        }
+
+        .tooltip-header {
+            font-weight: bold;
+            color: #BB9847;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .tooltip-label {
+            color: rgba(10, 37, 64, 0.7);
+        }
+
+        .tooltip-value {
+            font-weight: bold;
+            color: #0A2540;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navigation -->
+    <div id="topNav">
+        <div id="dropdownIcon" onclick="toggleDropdown()">☰</div>
+        <input type="text" id="searchBar" placeholder="Search nodes by code, name, or domain..." onkeyup="searchNodes(this.value)">
+        <div class="info-badge" id="nodeCount">0 nodes</div>
+    </div>
+
+    <!-- Dropdown Menu -->
+    <div id="dropdownMenu">
+        <a href="/chart-data" class="dropdown-item">📊 Intelligence Database</a>
+        <a href="/tunity" class="dropdown-item">🎛️ TUNITY Control Panel</a>
+        <a href="/fingerprint" class="dropdown-item">🎯 Fingerprint System</a>
+        <div style="border-top: 1px solid rgba(187, 152, 71, 0.3); margin: 5px 0;"></div>
+        <a href="#" class="dropdown-item" onclick="exportData()">💾 Export JSON</a>
+        <a href="#" class="dropdown-item" onclick="showInfo()">ℹ️ About 4D Sandbox</a>
+    </div>
+
+    <!-- Main Canvas -->
+    <div id="mainCanvas">
+        <div id="radialPlot"></div>
+    </div>
+
+    <!-- Legend Panel -->
+    <div id="legendPanel">
+        <div class="legend-title">🎨 Domain Colors</div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #2196F3;"></div>
+            <span class="legend-label">EXECUTION</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #4CAF50;"></div>
+            <span class="legend-label">INTENT</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #FFC107;"></div>
+            <span class="legend-label">RISK</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #F44336;"></div>
+            <span class="legend-label">META</span>
+        </div>
+
+        <div class="legend-section">
+            <div class="legend-title">📐 Fibonacci Rings</div>
+            <div id="ringsLegend"></div>
+        </div>
+    </div>
+
+    <!-- Node Tooltip -->
+    <div id="nodeTooltip" class="node-tooltip"></div>
+
+    <script>
+        let allNodes = [];
+        let allRings = [];
+        let filteredNodes = [];
+
+        // Domain colors
+        const DOMAIN_COLORS = {
+            'EXECUTION': '#2196F3',
+            'INTENT': '#4CAF50',
+            'RISK': '#FFC107',
+            'META': '#F44336'
+        };
+
+        // Load data on startup
+        window.onload = function() {
+            loadData();
+        };
+
+        // Dropdown toggle
+        function toggleDropdown() {
+            const menu = document.getElementById('dropdownMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('dropdownMenu');
+            const icon = document.getElementById('dropdownIcon');
+            if (!dropdown.contains(e.target) && e.target !== icon) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // Load data from API
+        async function loadData() {
+            try {
+                // Load rings
+                const ringsResponse = await fetch('/api/fingerprint/rings');
+                const ringsData = await ringsResponse.json();
+                if (ringsData.success) {
+                    allRings = ringsData.data;
+                    renderRingsLegend();
+                }
+
+                // Load nodes
+                const nodesResponse = await fetch('/api/fingerprint/nodes');
+                const nodesData = await nodesResponse.json();
+                if (nodesData.success) {
+                    allNodes = nodesData.data;
+                    filteredNodes = allNodes;
+                    updateNodeCount();
+                    renderPlot();
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        // Render rings legend
+        function renderRingsLegend() {
+            const container = document.getElementById('ringsLegend');
+            container.innerHTML = allRings.map(ring => `
+                <div class="ring-item">
+                    <span style="color: ${ring.hex_color}; font-weight: bold;">Ring ${ring.ring_number}</span>
+                    <span class="ring-badge">r=${ring.radius}</span>
+                </div>
+            `).join('');
+        }
+
+        // Update node count
+        function updateNodeCount() {
+            document.getElementById('nodeCount').textContent = `${filteredNodes.length} nodes`;
+        }
+
+        // Search nodes
+        function searchNodes(query) {
+            if (!query) {
+                filteredNodes = allNodes;
+            } else {
+                const lower = query.toLowerCase();
+                filteredNodes = allNodes.filter(n => 
+                    n.node_code.toLowerCase().includes(lower) ||
+                    n.name.toLowerCase().includes(lower) ||
+                    n.domain.toLowerCase().includes(lower) ||
+                    n.band_label.toLowerCase().includes(lower)
+                );
+            }
+            updateNodeCount();
+            renderPlot();
+        }
+
+        // Render visualization
+        function renderPlot() {
+            // Create Fibonacci ring traces
+            const ringTraces = allRings.map(ring => ({
+                type: 'scatterpolar',
+                mode: 'lines',
+                r: Array(361).fill(ring.radius),
+                theta: Array.from({length: 361}, (_, i) => i),
+                line: {
+                    color: ring.hex_color,
+                    width: 2,
+                    dash: 'dot'
+                },
+                hoverinfo: 'skip',
+                showlegend: false,
+                name: `Ring ${ring.ring_number} (${ring.band_label})`
+            }));
+
+            // Create node trace with domain colors
+            const nodeTrace = {
+                type: 'scatterpolar',
+                mode: 'markers+text',
+                r: filteredNodes.map(n => n.radius),
+                theta: filteredNodes.map(n => n.angle_degrees),
+                text: filteredNodes.map(n => n.node_code),
+                textposition: 'top center',
+                textfont: {
+                    size: 9,
+                    color: '#0A2540',
+                    family: 'Segoe UI'
+                },
+                marker: {
+                    size: filteredNodes.map(n => 12 + (n.fingerprint_value * 8)),
+                    color: filteredNodes.map(n => DOMAIN_COLORS[n.domain]),
+                    opacity: filteredNodes.map(n => 0.7 + (n.fingerprint_value * 0.3)),
+                    line: {
+                        color: '#0A2540',
+                        width: 2
+                    }
+                },
+                hovertemplate: 
+                    '<b>%{customdata[0]}</b><br>' +
+                    '%{customdata[1]}<br>' +
+                    'Domain: %{customdata[2]}<br>' +
+                    'Fingerprint: %{customdata[3]:.3f}<br>' +
+                    'Band: %{customdata[4]}<br>' +
+                    'Ring: %{customdata[5]} (r=%{r})<br>' +
+                    '<extra></extra>',
+                customdata: filteredNodes.map(n => [
+                    n.node_code,
+                    n.name,
+                    n.domain,
+                    n.fingerprint_value,
+                    n.band_label,
+                    n.ring_id
+                ]),
+                showlegend: false
+            };
+
+            const data = [...ringTraces, nodeTrace];
+
+            const layout = {
+                polar: {
+                    bgcolor: 'rgba(242, 243, 244, 0.3)',
+                    radialaxis: {
+                        visible: true,
+                        range: [0, 25],
+                        gridcolor: 'rgba(187, 152, 71, 0.2)',
+                        tickfont: { color: '#BB9847', size: 11 },
+                        showline: false
+                    },
+                    angularaxis: {
+                        visible: true,
+                        gridcolor: 'rgba(187, 152, 71, 0.2)',
+                        tickfont: { color: '#BB9847', size: 11 },
+                        direction: 'clockwise',
+                        rotation: 90,
+                        showline: false
+                    }
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {
+                    family: 'Segoe UI, sans-serif',
+                    color: '#0A2540'
+                },
+                margin: { l: 60, r: 60, t: 20, b: 60 },
+                hovermode: 'closest',
+                showlegend: false
+            };
+
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['select2d', 'lasso2d', 'toImage']
+            };
+
+            Plotly.newPlot('radialPlot', data, layout, config);
+        }
+
+        // Export data
+        function exportData() {
+            const dataStr = JSON.stringify({
+                nodes: allNodes,
+                rings: allRings,
+                exported: new Date().toISOString()
+            }, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'fingerprint_nodebase_2d.json';
+            link.click();
+        }
+
+        // Show info about 4D sandbox
+        function showInfo() {
+            alert(
+                '2D RADIAL NODEBASE - MEDIUM VERSION\n\n' +
+                'This is a SIMPLIFIED visualization:\n' +
+                '• Fibonacci rings (F3-F8)\n' +
+                '• Node positioning (r, θ)\n' +
+                '• Domain coloring (simple)\n' +
+                '• Basic search\n\n' +
+                'What\'s NOT included:\n' +
+                '✗ Gradient heat maps\n' +
+                '✗ Crosshair axes\n' +
+                '✗ Complex controls\n' +
+                '✗ 4D topology modeling\n\n' +
+                'WHY:\n' +
+                'The center (0,0) is a singularity where +/- diverge.\n' +
+                'Proper modeling requires 4D sandbox to handle:\n' +
+                '• Zero-crossing (±z hemispheres)\n' +
+                '• Time/calibration dimension\n' +
+                '• Confidence decay\n' +
+                '• Phase transitions\n\n' +
+                'This version is SAFE for exploration without\n' +
+                'false precision from unmodeled topology.'
+            );
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>

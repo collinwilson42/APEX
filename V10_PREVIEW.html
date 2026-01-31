@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V10 Database Preview - MT5 Meta Agent</title>
+    <style>
+        /* V10 Color Palette */
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #0f1419;
+            --bg-panel: #1a1f2e;
+            --bg-panel-dark: #12171f;
+            --border-main: #2a3f5f;
+            --border-light: #3a4f6f;
+            --border-gold: #d4a853;
+            --text-primary: #ffffff;
+            --text-secondary: #a8b3c1;
+            --text-tertiary: #6b7785;
+            --text-gold: #d4a853;
+            --gold: #d4a853;
+            --gold-hover: #e8bc67;
+            --gold-dim: rgba(212, 168, 83, 0.1);
+            --green: #4ade80;
+            --red: #ef4444;
+            --cyan: #22d3ee;
+            --teal: #14b8a6;
+            --status-stopped: #ef4444;
+            --status-running: #4ade80;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* HEADER */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-main);
+            position: relative;
+            z-index: 1000;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .menu-toggle {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+
+        .menu-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        .dropdown-icon {
+            width: 24px;
+            height: 24px;
+            /* Gold hamburger icon */
+            background: linear-gradient(to bottom, 
+                var(--gold) 0%, var(--gold) 20%, 
+                transparent 20%, transparent 40%,
+                var(--gold) 40%, var(--gold) 60%,
+                transparent 60%, transparent 80%,
+                var(--gold) 80%, var(--gold) 100%);
+            border-radius: 2px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+        }
+
+        .version {
+            display: inline-block;
+            background: var(--bg-panel);
+            color: var(--text-secondary);
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        /* STATUS INDICATOR */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-bubble {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 6px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 80px;
+            height: 32px;
+            position: relative;
+        }
+
+        .live-gif {
+            height: 24px;
+            width: auto;
+            display: none;
+            /* Simulated blinking animation */
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .status-indicator.running .live-gif {
+            display: inline !important;
+        }
+
+        .status-indicator.running .status-text {
+            display: none !important;
+        }
+
+        .status-text {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            display: inline;
+        }
+
+        /* BUTTONS */
+        .btn-primary {
+            background: var(--gold);
+            color: #000000;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .btn-primary:hover {
+            background: var(--gold-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(212, 168, 83, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* DROPDOWN MENU */
+        .dropdown-menu {
+            position: absolute;
+            top: 70px;
+            left: 40px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-main);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            min-width: 240px;
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(42, 63, 95, 0.3);
+        }
+
+        .menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .menu-item:hover {
+            background: var(--bg-panel-dark);
+            color: var(--text-primary);
+            padding-left: 24px;
+        }
+
+        .menu-item.active {
+            background: var(--gold-dim);
+            color: var(--gold);
+            border-left: 3px solid var(--gold);
+        }
+
+        .menu-icon {
+            color: var(--gold);
+            font-size: 12px;
+        }
+
+        /* MAIN CONTAINER */
+        .v10-container {
+            padding: 30px;
+            max-width: 100%;
+            min-height: calc(100vh - 90px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            font-style: italic;
+        }
+
+        /* DEMO NOTE */
+        .demo-note {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-gold);
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .demo-note h3 {
+            color: var(--gold);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .demo-note p {
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .demo-note code {
+            background: var(--bg-panel-dark);
+            color: var(--cyan);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <button id="menuToggle" class="menu-toggle">
+                <div class="dropdown-icon"></div>
+            </button>
+            <h1>MT5 META AGENT <span class="version">V10</span></h1>
+        </div>
+        <div class="header-right">
+            <div id="agentStatus" class="status-indicator">
+                <div class="status-bubble">
+                    <div class="live-gif" id="liveGif" style="color: var(--green); font-weight: bold;">● LIVE</div>
+                    <span class="status-text" id="statusText">STOPPED</span>
+                </div>
+            </div>
+            <button id="toggleAgent" class="btn-primary">START AGENT</button>
+        </div>
+    </div>
+
+    <!-- Dropdown Menu -->
+    <nav id="dropdownMenu" class="dropdown-menu">
+        <a href="#" class="menu-item">
+            <span class="menu-icon">▸</span>
+            <span>Dashboard</span>
+        </a>
+        <a href="#" class="menu-item active">
+            <span class="menu-icon">▸</span>
+            <span>Database</span>
+        </a>
+        <a href="#" class="menu-item">
+            <span class="menu-icon">▸</span>
+            <span>Profile Manager</span>
+        </a>
+        <a href="#" class="menu-item">
+            <span class="menu-icon">▸</span>
+            <span>API Skills Manager</span>
+        </a>
+        <a href="#" class="menu-item">
+            <span class="menu-icon">▸</span>
+            <span>Backtest Results</span>
+        </a>
+        <a href="#" class="menu-item">
+            <span class="menu-icon">▸</span>
+            <span>Settings</span>
+        </a>
+    </nav>
+
+    <!-- Main Container (90% blank) -->
+    <div class="v10-container">
+        Content area ready for future development...
+    </div>
+
+    <!-- Demo Note -->
+    <div class="demo-note">
+        <h3>🎯 V10 DATABASE</h3>
+        <p>
+            <strong>STATUS:</strong> Header-only version<br>
+            <strong>FEATURES:</strong><br>
+            ✓ Animated LIVE GIF toggle<br>
+            ✓ White bubble background<br>
+            ✓ Dropdown navigation<br>
+            ✓ 90% blank (ready to build)<br><br>
+            <code>Click "START AGENT" to see the GIF!</code>
+        </p>
+    </div>
+
+    <script>
+        // Menu toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        
+        menuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('show');
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!menuToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.remove('show');
+            }
+        });
+        
+        // Agent toggle
+        const toggleBtn = document.getElementById('toggleAgent');
+        const statusIndicator = document.getElementById('agentStatus');
+        const statusText = document.getElementById('statusText');
+        const liveGif = document.getElementById('liveGif');
+        
+        toggleBtn.addEventListener('click', function() {
+            const isRunning = statusIndicator.classList.contains('running');
+            
+            if (isRunning) {
+                statusIndicator.classList.remove('running');
+                toggleBtn.textContent = 'START AGENT';
+                statusText.textContent = 'STOPPED';
+                statusText.style.display = 'inline';
+                liveGif.style.display = 'none';
+            } else {
+                statusIndicator.classList.add('running');
+                toggleBtn.textContent = 'STOP AGENT';
+                statusText.style.display = 'none';
+                liveGif.style.display = 'inline';
+            }
+        });
+        
+        console.log('╔══════════════════════════════════════════════════════════════╗');
+        console.log('║  V10 INTELLIGENCE DATABASE - PREVIEW                         ║');
+        console.log('╚══════════════════════════════════════════════════════════════╝');
+    </script>
+</body>
+</html>

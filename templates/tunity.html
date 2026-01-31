@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TUNITY Control Panel - MT5 Meta Agent V11.3</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* ================================================================
+           TUNITY CONTROL PANEL STYLES
+           ================================================================ */
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .tunity-container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Header */
+        .tunity-header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+            margin-bottom: 30px;
+        }
+        
+        .tunity-title {
+            font-size: 36px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #ffd700, #ffed4e, #b8860b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .tunity-subtitle {
+            color: rgba(255, 215, 0, 0.6);
+            font-size: 14px;
+            letter-spacing: 3px;
+        }
+        
+        /* Back to Database Link */
+        .back-link {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ffd700;
+            text-decoration: none;
+            padding: 10px 20px;
+            background: rgba(184, 134, 11, 0.2);
+            border: 1px solid rgba(184, 134, 11, 0.4);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .back-link:hover {
+            background: rgba(184, 134, 11, 0.3);
+            border-color: #ffd700;
+            transform: translateX(-5px);
+        }
+        
+        .back-link img {
+            width: 20px;
+            height: 20px;
+            transform: rotate(180deg);
+        }
+        
+        /* Main Grid Layout */
+        .tunity-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            gap: 20px;
+            min-height: calc(100vh - 200px);
+        }
+        
+        /* Panel Styles */
+        .tunity-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 30, 0.95), rgba(10, 10, 15, 0.98));
+            border: 1px solid rgba(184, 134, 11, 0.3);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .panel-header {
+            padding: 15px 20px;
+            background: linear-gradient(90deg, rgba(184, 134, 11, 0.25), rgba(184, 134, 11, 0.05));
+            border-bottom: 1px solid rgba(184, 134, 11, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .panel-title {
+            color: #ffd700;
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        
+        .panel-badge {
+            background: rgba(78, 205, 196, 0.2);
+            color: #4ecdc4;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        
+        .panel-content {
+            padding: 15px;
+            height: calc(100% - 50px);
+            overflow-y: auto;
+        }
+        
+        /* Left Panel - File Explorer */
+        .explorer-section {
+            margin-bottom: 20px;
+        }
+        
+        .explorer-section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-bottom: 5px;
+        }
+        
+        .explorer-section-header:hover {
+            background: rgba(184, 134, 11, 0.2);
+        }
+        
+        .explorer-section-header img {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .explorer-section-header span {
+            color: #ffd700;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .explorer-items {
+            padding-left: 30px;
+            display: none;
+        }
+        
+        .explorer-items.expanded {
+            display: block;
+        }
+        
+        .explorer-item {
+            padding: 8px 12px;
+            margin: 3px 0;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .explorer-item:hover {
+            background: rgba(184, 134, 11, 0.15);
+            transform: translateX(5px);
+        }
+        
+        .explorer-item.active {
+            background: rgba(184, 134, 11, 0.3);
+            border-left: 3px solid #ffd700;
+        }
+        
+        /* Center Panel - Main View */
+        .center-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .center-tabs {
+            display: flex;
+            gap: 5px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(184, 134, 11, 0.2);
+        }
+        
+        .center-tab {
+            padding: 10px 20px;
+            background: rgba(184, 134, 11, 0.1);
+            border: 1px solid rgba(184, 134, 11, 0.3);
+            color: rgba(255, 215, 0, 0.7);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-radius: 5px;
+        }
+        
+        .center-tab:hover {
+            background: rgba(184, 134, 11, 0.2);
+            color: #ffd700;
+        }
+        
+        .center-tab.active {
+            background: linear-gradient(135deg, rgba(184, 134, 11, 0.3), rgba(255, 215, 0, 0.1));
+            border-color: #ffd700;
+            color: #ffd700;
+        }
+        
+        .center-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        /* Profile Cards */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        
+        .profile-card {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(20, 20, 30, 0.6));
+            border: 1px solid rgba(184, 134, 11, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .profile-card:hover {
+            border-color: #ffd700;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.15);
+        }
+        
+        .profile-card.active {
+            border-color: #4ecdc4;
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.3);
+        }
+        
+        .profile-name {
+            color: #ffd700;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .profile-metric {
+            font-size: 28px;
+            font-weight: 700;
+            color: #4ecdc4;
+            margin-bottom: 5px;
+        }
+        
+        .profile-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .profile-class {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 4px 12px;
+            background: rgba(184, 134, 11, 0.2);
+            border-radius: 12px;
+            font-size: 10px;
+            color: #ffd700;
+        }
+        
+        /* Right Panel - Config */
+        .config-section {
+            margin-bottom: 20px;
+        }
+        
+        .config-section-title {
+            color: #ffd700;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(184, 134, 11, 0.2);
+            margin-bottom: 15px;
+        }
+        
+        .config-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .config-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .config-value {
+            font-size: 12px;
+            color: #4ecdc4;
+            font-weight: 600;
+        }
+        
+        .config-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(184, 134, 11, 0.3);
+            border-radius: 4px;
+            padding: 6px 12px;
+            color: #e0e0e0;
+            font-size: 12px;
+            width: 100px;
+            text-align: right;
+        }
+        
+        .config-input:focus {
+            outline: none;
+            border-color: #ffd700;
+        }
+        
+        .config-toggle {
+            width: 44px;
+            height: 22px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 11px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .config-toggle.active {
+            background: rgba(78, 205, 196, 0.4);
+        }
+        
+        .config-toggle::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: #e0e0e0;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s ease;
+        }
+        
+        .config-toggle.active::after {
+            transform: translateX(22px);
+            background: #4ecdc4;
+        }
+        
+        /* Action Buttons */
+        .action-btn {
+            width: 100%;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, rgba(184, 134, 11, 0.3), rgba(255, 215, 0, 0.1));
+            border: 1px solid rgba(184, 134, 11, 0.5);
+            color: #ffd700;
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        
+        .action-btn:hover {
+            background: linear-gradient(135deg, rgba(184, 134, 11, 0.5), rgba(255, 215, 0, 0.2));
+            border-color: #ffd700;
+            transform: translateY(-2px);
+        }
+        
+        .action-btn.primary {
+            background: linear-gradient(135deg, rgba(78, 205, 196, 0.3), rgba(78, 205, 196, 0.1));
+            border-color: rgba(78, 205, 196, 0.5);
+            color: #4ecdc4;
+        }
+        
+        .action-btn.primary:hover {
+            background: linear-gradient(135deg, rgba(78, 205, 196, 0.5), rgba(78, 205, 196, 0.2));
+            border-color: #4ecdc4;
+        }
+        
+        /* Status Indicators */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .status-dot.active {
+            background: #4ecdc4;
+            box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+        }
+        
+        .status-dot.inactive {
+            background: #ff6b6b;
+        }
+        
+        /* Leaderboard */
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .leaderboard-table th,
+        .leaderboard-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(184, 134, 11, 0.1);
+        }
+        
+        .leaderboard-table th {
+            color: #ffd700;
+            font-size: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .leaderboard-table td {
+            font-size: 12px;
+        }
+        
+        .leaderboard-rank {
+            width: 40px;
+            text-align: center;
+            font-weight: 700;
+            color: #ffd700;
+        }
+        
+        /* API Complex Tree */
+        .api-tree {
+            padding: 10px;
+        }
+        
+        .api-node {
+            padding: 10px 15px;
+            margin: 5px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            border-left: 3px solid rgba(184, 134, 11, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .api-node:hover {
+            background: rgba(184, 134, 11, 0.15);
+            border-left-color: #ffd700;
+        }
+        
+        .api-node.master {
+            border-left-color: #4ecdc4;
+        }
+        
+        .api-node.meta {
+            border-left-color: #ff6b6b;
+        }
+        
+        .api-node-name {
+            font-size: 12px;
+            color: #e0e0e0;
+            font-weight: 600;
+        }
+        
+        .api-node-type {
+            font-size: 10px;
+            color: rgba(255, 215, 0, 0.6);
+            margin-top: 3px;
+        }
+        
+        /* Scrollbar Styles */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #b8860b, #ffd700);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #ffd700, #ffed4e);
+        }
+    </style>
+</head>
+<body>
+    <!-- Back to Database Link -->
+    <a href="/chart-data" class="back-link">
+        <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Back">
+        <span>Intelligence Database</span>
+    </a>
+    
+    <div class="tunity-container">
+        <!-- Header -->
+        <div class="tunity-header">
+            <h1 class="tunity-title">TUNITY Control Panel</h1>
+            <p class="tunity-subtitle">MT5 Meta Agent V11.3 — Profile & API Management</p>
+        </div>
+        
+        <!-- Main Grid -->
+        <div class="tunity-grid">
+            <!-- LEFT PANEL: File Explorer -->
+            <div class="tunity-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Explorer</span>
+                    <span class="panel-badge">V3.2</span>
+                </div>
+                <div class="panel-content">
+                    <!-- Profiles Section -->
+                    <div class="explorer-section">
+                        <div class="explorer-section-header" onclick="toggleSection('profiles')">
+                            <img src="{{ url_for('static', filename='img/folder.png') }}" alt="Folder">
+                            <span>Profiles</span>
+                        </div>
+                        <div class="explorer-items expanded" id="profilesItems">
+                            <div class="explorer-item active">
+                                <span class="status-dot active"></span>
+                                Claude_Elite_v1.4
+                            </div>
+                            <div class="explorer-item">
+                                <span class="status-dot inactive"></span>
+                                Claude_Elite_v1.5
+                            </div>
+                            <div class="explorer-item">
+                                <span class="status-dot inactive"></span>
+                                Claude_Elite_v1.3
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Skills Section -->
+                    <div class="explorer-section">
+                        <div class="explorer-section-header" onclick="toggleSection('skills')">
+                            <img src="{{ url_for('static', filename='img/Skill_Files.gif') }}" alt="Skills">
+                            <span>Skill Files</span>
+                        </div>
+                        <div class="explorer-items" id="skillsItems">
+                            <div class="explorer-item">advanced_momentum_v2.1</div>
+                            <div class="explorer-item">volatility_filter_v1.3</div>
+                            <div class="explorer-item">fibonacci_zones_v1.0</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Prompts Section -->
+                    <div class="explorer-section">
+                        <div class="explorer-section-header" onclick="toggleSection('prompts')">
+                            <img src="{{ url_for('static', filename='img/Promt_Engineering.gif') }}" alt="Prompts">
+                            <span>Prompt Files</span>
+                        </div>
+                        <div class="explorer-items" id="promptsItems">
+                            <div class="explorer-item">claude_elite_prompt_v4</div>
+                            <div class="explorer-item">analysis_template_v2</div>
+                        </div>
+                    </div>
+                    
+                    <!-- API Providers Section -->
+                    <div class="explorer-section">
+                        <div class="explorer-section-header" onclick="toggleSection('apis')">
+                            <img src="{{ url_for('static', filename='img/Data_Inputs.gif') }}" alt="APIs">
+                            <span>API Providers</span>
+                        </div>
+                        <div class="explorer-items" id="apisItems">
+                            <div class="explorer-item">Anthropic Claude</div>
+                            <div class="explorer-item">Ollama Local</div>
+                            <div class="explorer-item">OpenRouter</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Indicator Groups Section -->
+                    <div class="explorer-section">
+                        <div class="explorer-section-header" onclick="toggleSection('indicators')">
+                            <img src="{{ url_for('static', filename='img/folder.png') }}" alt="Indicators">
+                            <span>Indicator Groups</span>
+                        </div>
+                        <div class="explorer-items" id="indicatorsItems">
+                            <div class="explorer-item">Group 1 - Trend</div>
+                            <div class="explorer-item">Group 2 - Momentum</div>
+                            <div class="explorer-item">Group 3 - Volatility</div>
+                            <div class="explorer-item">Group 4 - Volume</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- CENTER PANEL: Main View -->
+            <div class="tunity-panel center-panel">
+                <div class="center-tabs">
+                    <button class="center-tab active" data-tab="profiles">Profiles</button>
+                    <button class="center-tab" data-tab="leaderboard">Leaderboard</button>
+                    <button class="center-tab" data-tab="apiComplex">API Complex</button>
+                    <button class="center-tab" data-tab="nodeView">Node View</button>
+                </div>
+                <div class="center-content">
+                    <!-- Profiles Grid -->
+                    <div id="profilesTab">
+                        <div class="profile-grid" id="profileGrid">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Leaderboard Table -->
+                    <div id="leaderboardTab" style="display: none;">
+                        <table class="leaderboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Profile</th>
+                                    <th>North Star</th>
+                                    <th>Class</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboardBody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- API Complex Tree -->
+                    <div id="apiComplexTab" style="display: none;">
+                        <div class="api-tree">
+                            <div class="api-node master">
+                                <div class="api-node-name">[MASTER]</div>
+                                <div class="api-node-type">Primary Control Node</div>
+                            </div>
+                            <div class="api-node meta">
+                                <div class="api-node-name">[META]</div>
+                                <div class="api-node-type">Meta Agent Coordinator</div>
+                            </div>
+                            <div class="api-node">
+                                <div class="api-node-name">Anthropic_Claude</div>
+                                <div class="api-node-type">API Provider • claude-3-5-sonnet</div>
+                            </div>
+                            <div class="api-node">
+                                <div class="api-node-name">Ollama_Local</div>
+                                <div class="api-node-type">Local Provider • llama3.2</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Node View Placeholder -->
+                    <div id="nodeViewTab" style="display: none;">
+                        <div style="text-align: center; padding: 50px; color: rgba(255, 215, 0, 0.5);">
+                            <p style="font-size: 14px; margin-bottom: 10px;">Node View Coming Soon</p>
+                            <p style="font-size: 12px;">TensorLy + Radial NodeBase Integration</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- RIGHT PANEL: Config -->
+            <div class="tunity-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Configuration</span>
+                    <span class="panel-badge">Active</span>
+                </div>
+                <div class="panel-content">
+                    <!-- Active Profile -->
+                    <div class="config-section">
+                        <div class="config-section-title">Active Profile</div>
+                        <div class="config-row">
+                            <span class="config-label">Name</span>
+                            <span class="config-value" id="activeProfileName">Claude_Elite_v1.4</span>
+                        </div>
+                        <div class="config-row">
+                            <span class="config-label">Rank</span>
+                            <span class="config-value" id="activeProfileRank">#4</span>
+                        </div>
+                        <div class="config-row">
+                            <span class="config-label">North Star</span>
+                            <span class="config-value" id="activeProfileMetric">33,545</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Trading Settings -->
+                    <div class="config-section">
+                        <div class="config-section-title">Trading Settings</div>
+                        <div class="config-row">
+                            <span class="config-label">Timeframe</span>
+                            <select class="config-input" style="width: 80px;">
+                                <option value="1m" selected>1m</option>
+                                <option value="5m">5m</option>
+                                <option value="15m">15m</option>
+                            </select>
+                        </div>
+                        <div class="config-row">
+                            <span class="config-label">Position Size</span>
+                            <input type="text" class="config-input" value="0.10">
+                        </div>
+                        <div class="config-row">
+                            <span class="config-label">Stop Loss</span>
+                            <input type="text" class="config-input" value="15">
+                        </div>
+                        <div class="config-row">
+                            <span class="config-label">Take Profit</span>
+                            <input type="text" class="config-input" value="30">
+                        </div>
+                        <div class="config-row">
+                            <span class="config-label">Max Trades</span>
+                            <input type="text" class="config-input" value="25">
+                        </div>
+                        <div class="config-row">
+                            <span class="config-label">Pyramiding</span>
+                            <div class="config-toggle active" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Assigned Files -->
+                    <div class="config-section">
+                        <div class="config-section-title">Assigned Files</div>
+                        <div class="config-row">
+                            <span class="config-label">Skill Files</span>
+                            <span class="config-value">2</span>
+                        </div>
+                        <div class="config-row">
+                            <span class="config-label">Prompt Files</span>
+                            <span class="config-value">1</span>
+                        </div>
+                        <div class="config-row">
+                            <span class="config-label">Input Files</span>
+                            <span class="config-value">1</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <button class="action-btn primary">Activate Profile</button>
+                    <button class="action-btn">Save Changes</button>
+                    <button class="action-btn">Clone Profile</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ================================================================
+        // Toggle Explorer Sections
+        // ================================================================
+        function toggleSection(sectionId) {
+            const items = document.getElementById(sectionId + 'Items');
+            items.classList.toggle('expanded');
+        }
+        
+        // ================================================================
+        // Tab Navigation
+        // ================================================================
+        document.querySelectorAll('.center-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.center-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                const tabId = this.dataset.tab + 'Tab';
+                document.querySelectorAll('.center-content > div').forEach(content => {
+                    content.style.display = 'none';
+                });
+                document.getElementById(tabId).style.display = 'block';
+            });
+        });
+        
+        // ================================================================
+        // Load Profile Grid
+        // ================================================================
+        function loadProfiles() {
+            const profiles = [
+                { name: 'Claude_Elite_v1.4', metric: 33545, class: 'Scalping', rank: 4, active: true },
+                { name: 'Claude_Elite_v1.5', metric: 28900, class: 'Scalping', rank: 5, active: false },
+                { name: 'Claude_Elite_v1.3', metric: 23456, class: 'Scalping', rank: 6, active: false },
+                { name: 'Claude_Elite_v1.2', metric: 16789, class: 'Swing', rank: 7, active: false },
+                { name: 'Claude_Elite_v1.1', metric: 13454, class: 'Swing', rank: 8, active: false },
+                { name: 'Claude_Elite_v1.0', metric: 10234, class: 'Scalping', rank: 9, active: false },
+            ];
+            
+            const grid = document.getElementById('profileGrid');
+            grid.innerHTML = '';
+            
+            profiles.forEach(profile => {
+                const card = document.createElement('div');
+                card.className = `profile-card ${profile.active ? 'active' : ''}`;
+                card.innerHTML = `
+                    <div class="profile-name">
+                        <span class="status-dot ${profile.active ? 'active' : 'inactive'}"></span>
+                        ${profile.name}
+                    </div>
+                    <div class="profile-metric">${profile.metric.toLocaleString()}</div>
+                    <div class="profile-label">North Star Metric</div>
+                    <span class="profile-class">${profile.class}</span>
+                `;
+                grid.appendChild(card);
+            });
+        }
+        
+        // ================================================================
+        // Load Leaderboard
+        // ================================================================
+        function loadLeaderboard() {
+            const rankings = [];
+            for (let i = 1; i <= 20; i++) {
+                rankings.push({
+                    rank: i,
+                    name: `Profile_${i}`,
+                    metric: 50000 - (i * 500),
+                    class: i % 2 === 0 ? 'Scalping' : 'Swing',
+                    active: i === 4
+                });
+            }
+            
+            const tbody = document.getElementById('leaderboardBody');
+            tbody.innerHTML = '';
+            
+            rankings.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="leaderboard-rank">#${r.rank}</td>
+                    <td>${r.name}</td>
+                    <td style="color: #4ecdc4; font-weight: 600;">${r.metric.toLocaleString()}</td>
+                    <td>${r.class}</td>
+                    <td><span class="status-dot ${r.active ? 'active' : 'inactive'}"></span>${r.active ? 'Active' : 'Inactive'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        // ================================================================
+        // Initialize
+        // ================================================================
+        loadProfiles();
+        loadLeaderboard();
+    </script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!-- ================================================================ -->
+<!-- PROFILE MANAGEMENT & RISK MANAGEMENT DUAL PANEL (V2.0 REDESIGN) -->
+<!-- Matches Intelligence Database Section Theme                      -->
+<!-- ================================================================ -->
+
+<div class="data-section" id="profileRiskSection">
+    
+    <!-- Section Header - Matches Other Database Sections -->
+    <div class="section-header">
+        <div class="section-left">
+            <h3>PROFILE & RISK MANAGEMENT</h3>
+            <span class="section-price" id="profileStatus">READY</span>
+        </div>
+        <div class="section-right">
+            <!-- Import All Data Button -->
+            <button class="icon-btn" id="importAllDataBtn" title="Import Historical Data">
+                <img src="{{ url_for('static', filename='img/imports.png') }}" alt="Import" class="action-icon">
+            </button>
+            <!-- Section Expand Button -->
+            <button class="section-expand-btn" data-section="profileRisk">
+                <img src="{{ url_for('static', filename='img/extendo.gif') }}" alt="Expand" class="expand-gif-small section-extendo" data-state="up">
+            </button>
+        </div>
+    </div>
+    
+    <!-- Section Body with Dual Panels -->
+    <div class="section-body full" id="profileRiskBody">
+        
+        <!-- Dual Panel Container with Gold Gradient Divider -->
+        <div class="dual-panel-container-v2">
+            
+            <!-- ======================================================== -->
+            <!-- LEFT PANEL: PROFILE MANAGEMENT                          -->
+            <!-- ======================================================== -->
+            <div class="profile-management-panel-v2">
+                
+                <!-- Panel Header with Title -->
+                <div class="pm-panel-header">
+                    <h4 class="pm-panel-title">PROFILE MANAGEMENT</h4>
+                </div>
+                
+                <!-- Search Bar Section -->
+                <div class="pm-search-section">
+                    <div class="pm-search-container">
+                        <input type="text" 
+                               id="pmSearchBar" 
+                               class="pm-search-bar-v2" 
+                               placeholder="Search Profiles..."
+                               autocomplete="off">
+                        <button class="pm-search-btn-v2" id="pmSearchBtn">
+                            <img src="{{ url_for('static', filename='img/SEARCH.png') }}" alt="Search" class="pm-search-icon">
+                            SEARCH
+                        </button>
+                        <button class="pm-save-btn-v2" id="pmSaveBtn" title="Save Current Profile">
+                            💾
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- File Windows Grid (2x2) with Headers -->
+                <div class="pm-file-windows-v2">
+                    
+                    <!-- Profile Files Window -->
+                    <div class="pm-file-window-v2" data-folder="profiles">
+                        <div class="pm-window-header-v2">
+                            <span class="pm-header-title">PROFILE FILES</span>
+                        </div>
+                        <div class="pm-window-body-v2">
+                            <div class="pm-file-count" id="profileCount">0 files</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Input Files Window -->
+                    <div class="pm-file-window-v2" data-folder="inputs">
+                        <div class="pm-window-header-v2">
+                            <span class="pm-header-title">INPUT FILES</span>
+                        </div>
+                        <div class="pm-window-body-v2">
+                            <div class="pm-file-count" id="inputCount">0 files</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Prompt Files Window -->
+                    <div class="pm-file-window-v2" data-folder="prompts">
+                        <div class="pm-window-header-v2">
+                            <span class="pm-header-title">PROMPT FILES</span>
+                        </div>
+                        <div class="pm-window-body-v2">
+                            <div class="pm-file-count" id="promptCount">0 files</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Skill Files Window -->
+                    <div class="pm-file-window-v2" data-folder="skills">
+                        <div class="pm-window-header-v2">
+                            <span class="pm-header-title">SKILL FILES</span>
+                        </div>
+                        <div class="pm-window-body-v2">
+                            <div class="pm-file-count" id="skillCount">0 files</div>
+                        </div>
+                    </div>
+                    
+                </div>
+                
+                <!-- Search Results Panel -->
+                <div class="pm-search-results-v2" id="pmSearchResults">
+                    <div class="pm-empty-state">
+                        <p>Select a file category to browse</p>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- Gold Gradient Divider -->
+            <div class="dual-panel-divider"></div>
+            
+            <!-- ======================================================== -->
+            <!-- RIGHT PANEL: RISK MANAGEMENT                            -->
+            <!-- ======================================================== -->
+            <div class="risk-management-panel-v2">
+                
+                <!-- Panel Header with Title -->
+                <div class="rm-panel-header">
+                    <h4 class="rm-panel-title">RISK MANAGEMENT</h4>
+                </div>
+                
+                <div class="rm-body-v2">
+                    
+                    <!-- Top Sliders -->
+                    <div class="rm-slider-section-v2">
+                        
+                        <!-- Risk / Reward Level Slider -->
+                        <div class="rm-slider-item-v2">
+                            <label class="rm-label-v2">RISK / REWARD LEVEL</label>
+                            <div class="rm-slider-container-v2">
+                                <input type="range" 
+                                       min="1" 
+                                       max="100" 
+                                       value="50" 
+                                       class="rm-slider-v2" 
+                                       id="rmRiskRewardLevel">
+                                <span class="rm-value-v2" id="rmRiskRewardValue">50</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Max Daily Drawdown Slider -->
+                        <div class="rm-slider-item-v2">
+                            <label class="rm-label-v2">MAX DAILY DRAWDOWN</label>
+                            <div class="rm-slider-container-v2">
+                                <input type="range" 
+                                       min="1" 
+                                       max="20" 
+                                       value="3" 
+                                       class="rm-slider-v2" 
+                                       id="rmMaxDrawdown">
+                                <span class="rm-value-v2" id="rmDrawdownValue">3%</span>
+                            </div>
+                        </div>
+                        
+                    </div>
+                    
+                    <!-- Stop Loss / Take Profit Grid -->
+                    <div class="rm-sl-tp-grid-v2">
+                        
+                        <!-- Stop Loss Column -->
+                        <div class="rm-sl-column-v2">
+                            <h5 class="rm-grid-title-v2">STOP LOSS</h5>
+                            
+                            <div class="rm-tp-row-v2">
+                                <span class="rm-tp-label-v2">SL1:</span>
+                                <select class="rm-tp-type-v2">
+                                    <option value="atr">ATR</option>
+                                    <option value="pips">Pips</option>
+                                    <option value="percent">%</option>
+                                </select>
+                                <input type="number" step="0.1" value="1.5" class="rm-tp-value-v2">
+                            </div>
+                            
+                            <div class="rm-tp-row-v2">
+                                <span class="rm-tp-label-v2">SL2:</span>
+                                <select class="rm-tp-type-v2">
+                                    <option value="atr" selected>ATR</option>
+                                    <option value="pips">Pips</option>
+                                </select>
+                                <input type="number" step="0.1" value="2.0" class="rm-tp-value-v2">
+                            </div>
+                            
+                            <div class="rm-tp-row-v2">
+                                <span class="rm-tp-label-v2">SL3:</span>
+                                <select class="rm-tp-type-v2">
+                                    <option value="atr" selected>ATR</option>
+                                    <option value="pips">Pips</option>
+                                </select>
+                                <input type="number" step="0.1" value="2.5" class="rm-tp-value-v2">
+                            </div>
+                            
+                            <div class="rm-tp-row-v2">
+                                <span class="rm-tp-label-v2">SL4:</span>
+                                <select class="rm-tp-type-v2">
+                                    <option value="atr" selected>ATR</option>
+                                    <option value="pips">Pips</option>
+                                </select>
+                                <input type="number" step="0.1" value="3.0" class="rm-tp-value-v2">
+                            </div>
+                            
+                            <div class="rm-tp-row-v2">
+                                <span class="rm-tp-label-v2">SL5:</span>
+                                <select class="rm-tp-type-v2">
+                                    <option value="trail" selected>Trail</option>
+                                    <option value="atr">ATR</option>
+                                </select>
+                                <input type="number" step="0.1" value="1.0" class="rm-tp-value-v2">
+                            </div>
+                            
+                        </div>
+                        
+                        <!-- Take Profit Column -->
+                        <div class="rm-tp-column-v2">
+                            <h5 class="rm-grid-title-v2">TAKE PROFIT</h5>
+                            
+                            <div class="rm-tp-row-v2">
+                                <span class="rm-tp-label-v2">TP1:</span>
+                                <select class="rm-tp-type-v2">
+                                    <option value="atr" selected>ATR</option>
+                                    <option value="pips">Pips</option>
+                                    <option value="rr">R:R</option>
+                                </select>
+                                <input type="number" step="0.1" value="1.5" class="rm-tp-value-v2">
+                            </div>
+                            
+                            <div class="rm-tp-row-v2">
+                                <span class="rm-tp-label-v2">TP2:</span>
+                                <select class="rm-tp-type-v2">
+                                    <option value="atr" selected>ATR</option>
+                                    <option value="rr">R:R</option>
+                                </select>
+                                <input type="number" step="0.1" value="3.0" class="rm-tp-value-v2">
+                            </div>
+                            
+                            <div class="rm-tp-row-v2">
+                                <span class="rm-tp-label-v2">TP3:</span>
+                                <select class="rm-tp-type-v2">
+                                    <option value="atr" selected>ATR</option>
+                                    <option value="rr">R:R</option>
+                                </select>
+                                <input type="number" step="0.1" value="5.0" class="rm-tp-value-v2">
+                            </div>
+                            
+                            <div class="rm-tp-row-v2">
+                                <span class="rm-tp-label-v2">TP4:</span>
+                                <select class="rm-tp-type-v2">
+                                    <option value="atr" selected>ATR</option>
+                                    <option value="rr">R:R</option>
+                                </select>
+                                <input type="number" step="0.1" value="8.0" class="rm-tp-value-v2">
+                            </div>
+                            
+                            <div class="rm-tp-row-v2">
+                                <span class="rm-tp-label-v2">TP5:</span>
+                                <select class="rm-tp-type-v2">
+                                    <option value="trail" selected>Trail</option>
+                                    <option value="atr">ATR</option>
+                                </select>
+                                <input type="number" step="0.1" value="1.5" class="rm-tp-value-v2">
+                            </div>
+                            
+                        </div>
+                        
+                    </div>
+                    
+                </div>
+                
+            </div>
+            
+        </div>
+        
+    </div>
+    
+</div>

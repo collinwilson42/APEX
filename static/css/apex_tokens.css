@@ -1,0 +1,206 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   APEX DESIGN TOKENS V2 - Dark Matte Neumorphism Foundation
+   Refined with consistent 315° light source and accessibility
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    /* ═══════════════════════════════════════════════════════════════
+       BASE SURFACE - Single material, carved appearance
+       All shadows derived from this one base color
+       ═══════════════════════════════════════════════════════════════ */
+    --color-base-core: #1C1E22;
+    --color-base-secondary: #22252A;
+    --color-base-tertiary: #2A2D33;
+    --color-base-elevated: #32363D;
+
+    /* ═══════════════════════════════════════════════════════════════
+       FIVE-STATE TRADING PALETTE
+       Strong Bull → Strong Bear gradient
+       ═══════════════════════════════════════════════════════════════ */
+    --color-state-strong-bull: #ADEBB3;  /* Mint - Strong BUY */
+    --color-state-bull: #46B4AF;         /* Teal - BUY */
+    --color-state-neutral: #A4A9B3;      /* Gray - HOLD */
+    --color-state-bear: #3A5F8A;         /* Steel Blue - SELL */
+    --color-state-strong-bear: #5A7EA8;  /* Light Steel - Strong SELL (visible) */
+
+    /* Semantic Aliases */
+    --color-accent-primary: var(--color-state-strong-bull);
+    --color-accent-positive: var(--color-state-bull);
+    --color-accent-neutral: var(--color-state-neutral);
+    --color-accent-negative: var(--color-state-bear);
+
+    /* Instance Type Colors */
+    --color-instance-database: var(--color-state-bull);      /* Teal */
+    --color-instance-trading: var(--color-state-strong-bull); /* Mint */
+
+    /* ═══════════════════════════════════════════════════════════════
+       TEXT HIERARCHY
+       ═══════════════════════════════════════════════════════════════ */
+    --color-text-primary: #F2F4F7;
+    --color-text-secondary: #A4A9B3;
+    --color-text-tertiary: #6B7280;
+    --color-text-disabled: #5A5F6A;
+    --color-text-inverse: #1C1E22;
+
+    /* ═══════════════════════════════════════════════════════════════
+       NEUMORPHIC SHADOW SYSTEM
+       Consistent 315° light source (top-left illumination)
+       
+       Light comes from TOP-LEFT, so:
+       - Light highlight: offset to top-left (-X, -Y)
+       - Dark shadow: offset to bottom-right (+X, +Y)
+       ═══════════════════════════════════════════════════════════════ */
+    --shadow-dark: #0D0F12;      /* Darker than base for depth */
+    --shadow-light: #2E3239;     /* Lighter than base for highlight */
+
+    /* RAISED - Element floats above surface (buttons, cards, panels) */
+    --shadow-raised-xs:
+        2px 2px 4px var(--shadow-dark),
+        -2px -2px 4px var(--shadow-light);
+    
+    --shadow-raised-sm: 
+        3px 3px 6px var(--shadow-dark),
+        -3px -3px 6px var(--shadow-light);
+    
+    --shadow-raised-md: 
+        5px 5px 10px var(--shadow-dark),
+        -5px -5px 10px var(--shadow-light);
+    
+    --shadow-raised-lg: 
+        8px 8px 16px var(--shadow-dark),
+        -8px -8px 16px var(--shadow-light);
+
+    /* INSET - Element pressed into surface (inputs, wells, active states) */
+    --shadow-inset-xs:
+        inset 1px 1px 2px var(--shadow-dark),
+        inset -1px -1px 2px var(--shadow-light);
+
+    --shadow-inset-sm:
+        inset 2px 2px 4px var(--shadow-dark),
+        inset -2px -2px 4px var(--shadow-light);
+    
+    --shadow-inset-md:
+        inset 3px 3px 6px var(--shadow-dark),
+        inset -3px -3px 6px var(--shadow-light);
+    
+    --shadow-inset-lg:
+        inset 5px 5px 10px var(--shadow-dark),
+        inset -5px -5px 10px var(--shadow-light);
+
+    /* ═══════════════════════════════════════════════════════════════
+       TYPOGRAPHY
+       ═══════════════════════════════════════════════════════════════ */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 
+                 Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 
+                 'Monaco', 'Inconsolata', monospace;
+
+    --text-xs: 10px;
+    --text-sm: 12px;
+    --text-base: 14px;
+    --text-lg: 16px;
+    --text-xl: 18px;
+    --text-2xl: 22px;
+    --text-3xl: 28px;
+
+    --weight-normal: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+
+    --leading-none: 1;
+    --leading-tight: 1.25;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.625;
+
+    --tracking-tight: -0.025em;
+    --tracking-normal: 0;
+    --tracking-wide: 0.05em;
+    --tracking-wider: 0.1em;
+
+    /* ═══════════════════════════════════════════════════════════════
+       SPACING (4px base)
+       ═══════════════════════════════════════════════════════════════ */
+    --space-0: 0;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+
+    /* ═══════════════════════════════════════════════════════════════
+       BORDER RADIUS
+       ═══════════════════════════════════════════════════════════════ */
+    --radius-xs: 2px;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-2xl: 20px;
+    --radius-full: 9999px;
+
+    /* ═══════════════════════════════════════════════════════════════
+       BORDERS
+       ═══════════════════════════════════════════════════════════════ */
+    --border-subtle: 1px solid rgba(255, 255, 255, 0.04);
+    --border-light: 1px solid rgba(255, 255, 255, 0.08);
+    --border-focus: 2px solid var(--color-accent-primary);
+
+    /* ═══════════════════════════════════════════════════════════════
+       LAYOUT
+       ═══════════════════════════════════════════════════════════════ */
+    --tab-bar-height: 36px;
+    --divider-height: 6px;
+    --control-center-header-height: 72px;
+
+    /* ═══════════════════════════════════════════════════════════════
+       ANIMATION
+       ═══════════════════════════════════════════════════════════════ */
+    --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    --duration-instant: 50ms;
+    --duration-fast: 100ms;
+    --duration-normal: 150ms;
+    --duration-slow: 250ms;
+
+    /* ═══════════════════════════════════════════════════════════════
+       Z-INDEX
+       ═══════════════════════════════════════════════════════════════ */
+    --z-base: 0;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-modal: 300;
+    --z-tooltip: 400;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FIVE-STATE UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.state-strong-bull { color: var(--color-state-strong-bull); }
+.state-bull { color: var(--color-state-bull); }
+.state-neutral { color: var(--color-state-neutral); }
+.state-bear { color: var(--color-state-bear); }
+.state-strong-bear { color: var(--color-state-strong-bear); }
+
+.bg-state-strong-bull { background: rgba(173, 235, 179, 0.15); }
+.bg-state-bull { background: rgba(70, 180, 175, 0.15); }
+.bg-state-neutral { background: rgba(164, 169, 179, 0.15); }
+.bg-state-bear { background: rgba(58, 95, 138, 0.15); }
+.bg-state-strong-bear { background: rgba(90, 126, 168, 0.2); }
