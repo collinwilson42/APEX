@@ -68,9 +68,9 @@ class SentimentConfig:
     # Database
     db_path: str = "sentiment_analysis.db"
     
-    # Schedule
-    tf_15m_offsets: tuple = (1, 16, 31, 46)  # Minutes after hour
-    tf_1m_interval: int = 2  # Every N minutes (1 = every minute, 2 = every other)
+    # Schedule - SEED 13: Migrated from 1m to 1h
+    tf_15m_offsets: tuple = (1, 16, 31, 46)  # Minutes after hour for 15m analysis
+    tf_1h_offsets: tuple = (2,)  # 2 minutes after hour for 1h analysis (catches closed hourly bar)
     
     # Screenshot region (None = full screen, or (x, y, width, height))
     screenshot_region: Optional[tuple] = None
@@ -552,7 +552,7 @@ class SentimentScheduler:
         self._running = False
         self._thread = None
         self._last_15m_run = {}
-        self._last_1m_run = {}
+        self._last_1h_run = {}  # SEED 13: Changed from 1m to 1h
         
         # Callbacks for UI updates
         self.on_new_sentiment = None  # Called with (SentimentReading)
@@ -575,7 +575,12 @@ class SentimentScheduler:
         logging.info("Sentiment scheduler stopped")
     
     def _run_loop(self):
-        """Main scheduler loop"""
+        """
+        Main scheduler loop.
+        SEED 13: Migrated from 1m to 1h timeframe.
+        - 15m analysis: X:01, X:16, X:31, X:46
+        - 1h analysis: X:02 (2 minutes after hour to catch closed bar)
+        """
         while self._running:
             now = datetime.utcnow()
             minute = now.minute
@@ -589,14 +594,14 @@ class SentimentScheduler:
                         self._run_analysis(symbol, "15m")
                         self._last_15m_run[key] = now
             
-            # Check 1m schedule (every N minutes)
-            if minute % self.config.tf_1m_interval == 1:  # e.g., 1, 3, 5...
+            # Check 1h schedule (X:02 - 2 minutes after hour)
+            if minute in self.config.tf_1h_offsets:
                 for symbol in self.symbols:
-                    key = f"{symbol}_1m"
-                    if key not in self._last_1m_run or \
-                       (now - self._last_1m_run[key]).seconds >= 60:
-                        self._run_analysis(symbol, "1m")
-                        self._last_1m_run[key] = now
+                    key = f"{symbol}_1h"
+                    if key not in self._last_1h_run or \
+                       (now - self._last_1h_run[key]).seconds >= 60:
+                        self._run_analysis(symbol, "1h")
+                        self._last_1h_run[key] = now
             
             # Sleep until next minute
             sleep_seconds = 60 - datetime.utcnow().second
@@ -773,14 +778,14 @@ def register_sentiment_routes(app, scheduler: SentimentScheduler):
     
     @app.route('/api/sentiment/status', methods=['GET'])
     def get_scheduler_status():
-        """Get scheduler status"""
+        """Get scheduler status. SEED 13: Shows 15m and 1h offsets."""
         return jsonify({
             "success": True,
             "running": scheduler._running,
             "symbols": scheduler.symbols,
             "config": {
                 "tf_15m_offsets": scheduler.config.tf_15m_offsets,
-                "tf_1m_interval": scheduler.config.tf_1m_interval,
+                "tf_1h_offsets": scheduler.config.tf_1h_offsets,
                 "display_duration": scheduler.config.display_duration_seconds
             }
         })

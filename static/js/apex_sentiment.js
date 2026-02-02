@@ -23,20 +23,20 @@ const ApexSentiment = {
     // Scheduling
     scheduleInterval: null,
     lastRun15m: null,
-    lastRun1m: null,
+    lastRun1h: null,
     
     // Config
     config: {
         displayDuration: 30000, // 30 seconds
         tf15mOffsets: [1, 16, 31, 46], // Minutes after hour for 15m analysis
-        tf1mInterval: 1, // Run 1m analysis every N minutes
+        tf1hOffsets: [2], // Minutes after hour for 1h analysis (X:02)
         replaySpeedMultiplier: 1
     },
     
     // DOM references
     containers: {
-        '1m': null,
-        '15m': null
+        '15m': null,
+        '1h': null
     },
     
     // Category metadata
@@ -82,7 +82,7 @@ const ApexSentiment = {
         
         // Run immediately for both timeframes to show something
         this.runAnalysis('15m');
-        setTimeout(() => this.runAnalysis('1m'), 500);
+        setTimeout(() => this.runAnalysis('1h'), 500);
     },
     
     stopEngine() {
@@ -92,8 +92,8 @@ const ApexSentiment = {
         this.stopScheduler();
         
         // Hide any visible sentiment panels
-        this.hideSentiment('1m');
         this.hideSentiment('15m');
+        this.hideSentiment('1h');
         
         console.log('[ApexSentiment] Engine STOPPED');
     },
@@ -145,13 +145,13 @@ const ApexSentiment = {
             }
         }
         
-        // Check 1m schedule (every minute or every N minutes based on config)
-        if (minute % this.config.tf1mInterval === 0) {
-            const key1m = `${now.getHours()}-${minute}`;
-            if (this.lastRun1m !== key1m) {
-                this.lastRun1m = key1m;
-                console.log(`[ApexSentiment] 1m trigger at ${now.toLocaleTimeString()}`);
-                this.runAnalysis('1m');
+        // Check 1h schedule (X:02 - 2 minutes after hour)
+        if (this.config.tf1hOffsets.includes(minute)) {
+            const key1h = `${now.getHours()}-${minute}`;
+            if (this.lastRun1h !== key1h) {
+                this.lastRun1h = key1h;
+                console.log(`[ApexSentiment] 1h trigger at ${now.toLocaleTimeString()}`);
+                this.runAnalysis('1h');
             }
         }
     },

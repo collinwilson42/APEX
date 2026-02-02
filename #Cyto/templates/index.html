@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYTO - 4D Temporal Database</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-dark: #1a1a2e;
+            --bg-panel: #252540;
+            --gold: #d4af37;
+            --gold-dim: #8b7355;
+            --text: #e0e0e0;
+            --text-dim: #888;
+            --shadow-dark: rgba(0, 0, 0, 0.5);
+            --shadow-light: rgba(255, 255, 255, 0.05);
+        }
+        
+        html, body {
+            height: 100%;
+            background: var(--bg-dark);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        /* TOP HALF - CYTO Canvas */
+        .cyto-viewport {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(180deg, #0d0d1a 0%, #1a1a2e 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #cytoCanvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        /* Time display at north */
+        .time-display {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+        }
+        
+        .time-display .time {
+            font-size: 2.5rem;
+            font-weight: 300;
+            color: var(--gold);
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+            letter-spacing: 2px;
+        }
+        
+        .time-display .date {
+            font-size: 1rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+            letter-spacing: 1px;
+        }
+        
+        /* BOTTOM HALF - Control Panel */
+        .control-panel {
+            height: 50%;
+            background: var(--bg-panel);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            border-top: 1px solid rgba(212, 175, 55, 0.2);
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .panel-title {
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: var(--gold);
+            letter-spacing: 2px;
+        }
+        
+        /* Neumorphic card */
+        .neu-card {
+            background: var(--bg-panel);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 
+                8px 8px 16px var(--shadow-dark),
+                -8px -8px 16px var(--shadow-light),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+        }
+        
+        /* Neumorphic button */
+        .neu-btn {
+            background: var(--bg-panel);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            color: var(--gold);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 
+                4px 4px 8px var(--shadow-dark),
+                -4px -4px 8px var(--shadow-light);
+        }
+        
+        .neu-btn:hover {
+            color: #fff;
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+        
+        .neu-btn:active {
+            box-shadow: 
+                inset 4px 4px 8px var(--shadow-dark),
+                inset -4px -4px 8px var(--shadow-light);
+        }
+        
+        .neu-btn.primary {
+            background: linear-gradient(145deg, #2a2a4a, #202038);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+        
+        /* Layer info grid */
+        .layers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .layer-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            border-left: 3px solid var(--gold);
+            box-shadow: inset 2px 2px 4px var(--shadow-dark);
+        }
+        
+        .layer-card.active {
+            border-left-color: #4ade80;
+            background: rgba(74, 222, 128, 0.05);
+        }
+        
+        .layer-card h4 {
+            color: var(--gold);
+            margin-bottom: 8px;
+            font-weight: 400;
+        }
+        
+        .layer-card .values {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+        
+        /* Stats bar */
+        .stats-bar {
+            display: flex;
+            gap: 30px;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .stat {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            color: var(--gold);
+            font-weight: 300;
+        }
+        
+        /* Actions */
+        .actions {
+            display: flex;
+            gap: 15px;
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- CYTO Viewport -->
+        <div class="cyto-viewport">
+            <div class="time-display">
+                <div class="time" id="currentTime">--:--:-- --</div>
+                <div class="date" id="currentDate">Loading...</div>
+            </div>
+            <canvas id="cytoCanvas"></canvas>
+        </div>
+        
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="panel-header">
+                <h2 class="panel-title">CYTO CONTROL</h2>
+                <div class="actions">
+                    <button class="neu-btn primary" onclick="addLayer()">+ Add Layer</button>
+                    <button class="neu-btn" onclick="resetView()">Reset View</button>
+                </div>
+            </div>
+            
+            <div class="stats-bar">
+                <div class="stat">
+                    <span class="stat-label">Active Layers</span>
+                    <span class="stat-value" id="layerCount">1</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Zoom Scale</span>
+                    <span class="stat-value" id="zoomScale">1.00x</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Max Radius</span>
+                    <span class="stat-value" id="maxRadius">1.618</span>
+                </div>
+            </div>
+            
+            <div class="neu-card">
+                <h3 style="color: var(--text-dim); margin-bottom: 15px; font-weight: 400;">Layer Stack (Expanding Outward)</h3>
+                <div class="layers-grid" id="layersGrid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Socket connection
+        const socket = io();
+        
+        // State
+        let layers = [{ w: 1, inner: 0.618, mid: 1.000, outer: 1.618 }];
+        let zoomScale = 1.0;
+        let animationFrame = null;
+        
+        // Canvas setup
+        const canvas = document.getElementById('cytoCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            const viewport = document.querySelector('.cyto-viewport');
+            const size = Math.min(viewport.clientWidth, viewport.clientHeight) - 40;
+            canvas.width = size;
+            canvas.height = size;
+            render();
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Render the CYTO torus
+        function render() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+            
+            // Clear
+            ctx.fillStyle = '#0d0d1a';
+            ctx.fillRect(0, 0, w, h);
+            
+            // Calculate scale to fit all layers
+            const maxOuter = layers.length > 0 ? layers[layers.length - 1].outer : 1.618;
+            const baseUnit = Math.min(w, h) / (maxOuter * 2.5);
+            
+            // Draw layers from outer to inner (so inner draws on top)
+            for (let i = layers.length - 1; i >= 0; i--) {
+                const layer = layers[i];
+                drawLayer(cx, cy, baseUnit, layer, i === 0);
+            }
+            
+            // Draw crosshair lines (36 total, 10° apart)
+            ctx.strokeStyle = 'rgba(212, 175, 55, 0.15)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 36; i++) {
+                const angle = (i * 10 - 90) * Math.PI / 180;
+                const innerR = layers[0].inner * baseUnit;
+                const outerR = maxOuter * baseUnit;
+                
+                ctx.beginPath();
+                ctx.moveTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
+                ctx.lineTo(cx + Math.cos(angle) * outerR, cy + Math.sin(angle) * outerR);
+                ctx.stroke();
+            }
+            
+            // Draw section numbers
+            ctx.fillStyle = 'rgba(212, 175, 55, 0.6)';
+            ctx.font = '14px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            const labelR = maxOuter * baseUnit + 25;
+            for (let i = 1; i <= 9; i++) {
+                // Section centers: 9 at north, 1-8 counter-clockwise
+                let angle;
+                if (i === 9) {
+                    angle = -90; // North
+                } else {
+                    angle = -90 + 20 + (8 - i) * 40 + 20; // Counter-clockwise from north
+                }
+                const rad = angle * Math.PI / 180;
+                const x = cx + Math.cos(rad) * labelR;
+                const y = cy + Math.sin(rad) * labelR;
+                ctx.fillText(i.toString(), x, y);
+            }
+        }
+        
+        function drawLayer(cx, cy, baseUnit, layer, isActive) {
+            const innerR = layer.inner * baseUnit;
+            const midR = layer.mid * baseUnit;
+            const outerR = layer.outer * baseUnit;
+            
+            // Neumorphic torus effect
+            // Outer shadow
+            const gradient = ctx.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
+            gradient.addColorStop(0, 'rgba(30, 30, 50, 0.9)');
+            gradient.addColorStop(0.3, 'rgba(40, 40, 65, 0.95)');
+            gradient.addColorStop(0.5, 'rgba(50, 50, 80, 1)');
+            gradient.addColorStop(0.7, 'rgba(40, 40, 65, 0.95)');
+            gradient.addColorStop(1, 'rgba(30, 30, 50, 0.9)');
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+            ctx.arc(cx, cy, innerR, 0, Math.PI * 2, true);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // Gold rings
+            const ringAlpha = isActive ? 0.8 : 0.4;
+            
+            // Inner ring
+            ctx.beginPath();
+            ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(212, 175, 55, ${ringAlpha * 0.6})`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            
+            // Mid ring (the 1.000 line)
+            ctx.beginPath();
+            ctx.arc(cx, cy, midR, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(212, 175, 55, ${ringAlpha})`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Outer ring
+            ctx.beginPath();
+            ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(212, 175, 55, ${ringAlpha * 0.6})`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            
+            // Layer label
+            if (layer.w > 1) {
+                ctx.fillStyle = `rgba(212, 175, 55, ${ringAlpha * 0.5})`;
+                ctx.font = '12px Segoe UI';
+                ctx.textAlign = 'left';
+                ctx.fillText(`W=${layer.w}`, cx + midR + 5, cy);
+            }
+        }
+        
+        // Socket handlers
+        socket.on('connect', () => {
+            console.log('Connected to CYTO server');
+            socket.emit('request_layers');
+        });
+        
+        socket.on('time_update', (data) => {
+            document.getElementById('currentTime').textContent = data.time;
+            document.getElementById('currentDate').textContent = data.date;
+        });
+        
+        socket.on('layers_data', (data) => {
+            layers = data.layers;
+            zoomScale = data.zoom_scale;
+            updateUI();
+            render();
+        });
+        
+        socket.on('layer_added', (data) => {
+            layers.push({
+                w: data.w,
+                inner: data.inner,
+                mid: data.mid,
+                outer: data.outer
+            });
+            zoomScale = data.zoom_scale;
+            updateUI();
+            render();
+        });
+        
+        socket.on('initial_state', (state) => {
+            console.log('Initial state:', state);
+        });
+        
+        // UI Updates
+        function updateUI() {
+            document.getElementById('layerCount').textContent = layers.length;
+            document.getElementById('zoomScale').textContent = zoomScale.toFixed(2) + 'x';
+            
+            const maxOuter = layers.length > 0 ? layers[layers.length - 1].outer : 1.618;
+            document.getElementById('maxRadius').textContent = maxOuter.toFixed(3);
+            
+            // Update layers grid
+            const grid = document.getElementById('layersGrid');
+            grid.innerHTML = layers.map((layer, i) => `
+                <div class="layer-card ${i === 0 ? 'active' : ''}">
+                    <h4>W = ${layer.w}</h4>
+                    <div class="values">
+                        inner: ${layer.inner.toFixed(3)}<br>
+                        mid: ${layer.mid.toFixed(3)}<br>
+                        outer: ${layer.outer.toFixed(3)}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Actions
+        function addLayer() {
+            fetch('/api/add_layer', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    console.log('Layer added:', data);
+                });
+        }
+        
+        function resetView() {
+            layers = [{ w: 1, inner: 0.618, mid: 1.000, outer: 1.618 }];
+            zoomScale = 1.0;
+            updateUI();
+            render();
+        }
+        
+        // Initial render
+        updateUI();
+        render();
+    </script>
+</body>
+</html>

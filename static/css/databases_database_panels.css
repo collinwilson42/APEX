@@ -1,41 +1,347 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   DATABASE PANELS - Shared Styles
-   Full-width tables with matte black design
-   Used by: db_xaug26.js, db_us500z25.js, db_us100z25.js, db_us30z25.js, db_btcz25.js
+   DATABASE PANELS V2.0 - 4-Quadrant Grid Layout
+   
+   Layout Structure:
+   ┌─────────────────────┬─────────────────────┐
+   │  Q1: Profile Mgr    │  Q2: Profile Detail │  ← View Panel (Top 50%)
+   │  (List/Create)      │  (Stats/Config)     │
+   ├─────────────────────┼─────────────────────┤
+   │  Q3: Instance       │  Q4: Data Table     │  ← Control Center (Bottom 50%)
+   │  Browser            │  (CORE/BASIC/etc)   │
+   └─────────────────────┴─────────────────────┘
+   
+   Each half is a 2-column CSS Grid with neomorphic styling
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Split Panels Container - 50/50 Layout */
-.database-split-panels {
-    display: flex;
-    gap: 2px;
+/* ═══════════════════════════════════════════════════════════════════════════
+   QUADRANT GRID - Used by both top (view) and bottom (control) panels
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.database-quadrant-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
     height: 100%;
     width: 100%;
-    background: rgba(0, 0, 0, 0.3);
+    padding: 8px;
+    box-sizing: border-box;
 }
 
-/* Individual Panel */
-.database-panel {
-    flex: 1;
+/* Individual Quadrant */
+.database-quadrant {
     display: flex;
     flex-direction: column;
-    min-width: 0;
-    background: #16181c;
+    background: rgba(22, 24, 28, 0.95);
+    border-radius: 12px;
     overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+    
+    /* Neomorphic shadow */
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
-/* Panel Header with Tabs */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Q1: PROFILE MANAGER (Top Left)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.database-quadrant--profile {
+    /* Profile Manager fills entire quadrant */
+}
+
+.database-quadrant--profile .profile-manager {
+    height: 100%;
+    width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Q2: PROFILE DETAILS (Top Right) - Stats & Config Tabs
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.database-quadrant--details {
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-details {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.profile-details__header {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(18, 20, 24, 0.6);
+    flex-shrink: 0;
+}
+
+.profile-details__tabs {
+    display: flex;
+    gap: 4px;
+}
+
+.profile-details__tab {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.profile-details__tab:hover {
+    color: #9ca3af;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.profile-details__tab--active {
+    color: #4ADEAA;
+    background: rgba(74, 222, 170, 0.1);
+}
+
+.profile-details__content {
+    flex: 1;
+    overflow: auto;
+    min-height: 0;
+}
+
+.profile-details__page {
+    display: none;
+    height: 100%;
+    padding: 12px;
+}
+
+.profile-details__page--active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Stats Page */
+.profile-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+}
+
+.profile-stats__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #6b7280;
+    text-align: center;
+}
+
+.profile-stats__empty-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.profile-stats__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.profile-stat-card {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.profile-stat-card__label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.profile-stat-card__value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #e0e0e0;
+}
+
+.profile-stat-card__value--positive {
+    color: #4ADEAA;
+}
+
+.profile-stat-card__value--negative {
+    color: #f87171;
+}
+
+/* Config Page - JSON Editor */
+.profile-config {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.profile-config__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #6b7280;
+    text-align: center;
+}
+
+.profile-config__editor {
+    flex: 1;
+    min-height: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0d0f12;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* JSON Editor Styling */
+.json-editor {
+    height: 100%;
+    width: 100%;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+}
+
+.json-editor__textarea {
+    flex: 1;
+    width: 100%;
+    background: #0a0b0d;
+    border: none;
+    color: #4ADEAA;
+    padding: 12px;
+    resize: none;
+    outline: none;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    box-sizing: border-box;
+}
+
+.json-editor__textarea:focus {
+    background: #0d0f12;
+}
+
+.json-editor__textarea::placeholder {
+    color: #3a4a40;
+}
+
+.json-editor__actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 8px;
+}
+
+.json-editor__btn {
+    padding: 6px 14px;
+    background: rgba(74, 222, 170, 0.15);
+    border: 1px solid rgba(74, 222, 170, 0.3);
+    border-radius: 4px;
+    color: #4ADEAA;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.json-editor__btn:hover {
+    background: rgba(74, 222, 170, 0.25);
+    border-color: rgba(74, 222, 170, 0.5);
+}
+
+.json-editor__btn--secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
+}
+
+.json-editor__btn--secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+}
+
+.json-editor__status {
+    font-size: 10px;
+    color: #6b7280;
+    padding: 0 8px;
+    align-self: center;
+}
+
+.json-editor__status--saved {
+    color: #4ADEAA;
+}
+
+.json-editor__status--error {
+    color: #f87171;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Q3: INSTANCE BROWSER (Bottom Left)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.database-quadrant--instances {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Q4: DATA TABLE (Bottom Right)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.database-quadrant--data {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SHARED PANEL COMPONENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Panel Header */
 .database-panel__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 10px;
-    background: rgba(18, 20, 24, 0.95);
+    padding: 8px 12px;
+    background: rgba(18, 20, 24, 0.6);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     flex-shrink: 0;
     gap: 10px;
 }
 
-/* Panel Content - Full Width Table Container */
+.database-panel__title {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #9ca3af;
+}
+
+/* Panel Content */
 .database-panel__content {
     flex: 1;
     overflow: auto;
@@ -43,22 +349,21 @@
     min-height: 0;
 }
 
-/* Tab Group Container */
+/* Tab Group */
 .database-tab-group {
     display: flex;
     gap: 2px;
     background: rgba(0, 0, 0, 0.3);
     padding: 3px;
-    border-radius: 4px;
+    border-radius: 6px;
 }
 
-/* Tab Button Style */
 .db-tab {
     padding: 6px 10px;
     background: transparent;
     border: none;
-    border-radius: 3px;
-    color: #8a8f98;
+    border-radius: 4px;
+    color: #6b7280;
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.5px;
@@ -69,18 +374,17 @@
 }
 
 .db-tab:hover {
-    color: #e0e0e0;
+    color: #9ca3af;
     background: rgba(255, 255, 255, 0.05);
 }
 
 .db-tab.active {
     color: #e0e0e0;
     background: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DATA TABLE STYLES - Full Width, Horizontal Scroll
+   DATA TABLE STYLES
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .database-table {
@@ -98,7 +402,7 @@
 
 .database-table th {
     background: linear-gradient(180deg, rgba(30, 32, 36, 0.98) 0%, rgba(22, 24, 28, 0.95) 100%);
-    color: #a4a9b3;
+    color: #9ca3af;
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.5px;
@@ -146,22 +450,10 @@
     background: rgba(18, 20, 24, 1);
 }
 
-.database-table tbody tr:nth-child(even):hover {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-/* Cell Color Classes */
-.cell-bull {
-    color: #ADEBB3 !important;
-}
-
-.cell-bear {
-    color: #3A5F8A !important;
-}
-
-.cell-neutral {
-    color: #A4A9B3 !important;
-}
+/* Cell Colors */
+.cell-bull { color: #4ADEAA !important; }
+.cell-bear { color: #60a5fa !important; }
+.cell-neutral { color: #9ca3af !important; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    EMPTY & LOADING STATES
@@ -172,8 +464,8 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    min-height: 150px;
-    color: #8a8f98;
+    min-height: 100px;
+    color: #6b7280;
     font-size: 12px;
 }
 
@@ -182,8 +474,8 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    min-height: 150px;
-    color: #ff6b6b;
+    min-height: 100px;
+    color: #f87171;
     font-size: 12px;
 }
 
@@ -193,51 +485,51 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    min-height: 150px;
-    padding: 30px;
+    min-height: 100px;
+    padding: 20px;
     text-align: center;
 }
 
 .database-empty-state__icon {
-    font-size: 32px;
-    color: #3a3f47;
-    margin-bottom: 12px;
+    font-size: 28px;
+    color: #374151;
+    margin-bottom: 10px;
 }
 
 .database-empty-state__title {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    color: #8a8f98;
-    margin-bottom: 6px;
+    color: #6b7280;
+    margin-bottom: 4px;
 }
 
 .database-empty-state__subtitle {
     font-size: 11px;
-    color: #5a5f68;
+    color: #4b5563;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SCROLLBAR STYLING
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.database-panel__content::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+.database-panel__content::-webkit-scrollbar,
+.profile-details__content::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
 }
 
-.database-panel__content::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
+.database-panel__content::-webkit-scrollbar-track,
+.profile-details__content::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-.database-panel__content::-webkit-scrollbar-thumb {
+.database-panel__content::-webkit-scrollbar-thumb,
+.profile-details__content::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
+    border-radius: 3px;
 }
 
-.database-panel__content::-webkit-scrollbar-thumb:hover {
+.database-panel__content::-webkit-scrollbar-thumb:hover,
+.profile-details__content::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.15);
-}
-
-.database-panel__content::-webkit-scrollbar-corner {
-    background: rgba(0, 0, 0, 0.2);
 }

@@ -133,6 +133,16 @@ CREATE TABLE IF NOT EXISTS positions_{instance_id} (
     signal_source TEXT,  -- SENTIMENT | PROFILE | MANUAL
     signal_data TEXT,  -- JSON
     
+    -- MT5 Live Sync (SEED 10D)
+    mt5_ticket INTEGER,           -- MT5 position ticket number
+    mt5_magic INTEGER,            -- EA magic number
+    mt5_profit REAL,              -- Real-time P&L from MT5
+    mt5_swap REAL,                -- Swap from MT5
+    mt5_commission REAL,          -- Commission from MT5
+    current_price REAL,           -- Latest price from MT5
+    sync_status TEXT DEFAULT 'PENDING',  -- PENDING | SYNCED | CLOSED_MT5 | ORPHAN
+    last_sync_at TEXT,            -- Last sync timestamp
+    
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 )
@@ -303,6 +313,95 @@ CREATE TABLE IF NOT EXISTS algorithm_instances (
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# BROKER TABLES (Seed 14B - Virtual Broker)
+# ═══════════════════════════════════════════════════════════════════════════
+
+BROKER_STATE_TABLE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS broker_state (
+    instance_id TEXT PRIMARY KEY,
+    mode TEXT NOT NULL DEFAULT 'SIM',  -- SIM | LIVE
+    initial_balance REAL DEFAULT 10000.0,
+    realized_pnl REAL DEFAULT 0.0,
+    
+    -- Last known state (for recovery)
+    last_equity REAL,
+    last_unrealized_pnl REAL,
+    position_count INTEGER DEFAULT 0,
+    
+    -- Config
+    auto_sl_tp INTEGER DEFAULT 1,  -- Enable SL/TP auto-close in SIM
+    slippage_sim REAL DEFAULT 0.0,  -- Simulated slippage (future)
+    
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES algorithm_instances(id)
+)
+"""
+
+BROKER_POSITIONS_TABLE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS broker_positions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    instance_id TEXT NOT NULL,
+    ticket INTEGER NOT NULL,  -- VirtualBroker ticket number
+    
+    symbol TEXT NOT NULL,
+    direction TEXT NOT NULL,  -- BUY | SELL
+    volume REAL NOT NULL,
+    
+    open_price REAL NOT NULL,
+    open_time TEXT NOT NULL,
+    
+    current_price REAL,
+    unrealized_pnl REAL DEFAULT 0.0,
+    
+    sl REAL,  -- Stop loss
+    tp REAL,  -- Take profit
+    
+    status TEXT DEFAULT 'OPEN',  -- OPEN | CLOSED
+    close_price REAL,
+    close_time TEXT,
+    close_reason TEXT,  -- MANUAL | SL_HIT | TP_HIT | SIGNAL
+    realized_pnl REAL,
+    
+    comment TEXT,
+    
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES algorithm_instances(id),
+    UNIQUE(instance_id, ticket)
+)
+"""
+
+BROKER_TRADES_TABLE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS broker_trades (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    instance_id TEXT NOT NULL,
+    position_ticket INTEGER,  -- Links to broker_positions.ticket
+    
+    trade_type TEXT NOT NULL,  -- OPEN | CLOSE | MODIFY
+    symbol TEXT NOT NULL,
+    direction TEXT,  -- BUY | SELL (for OPEN/CLOSE)
+    volume REAL,
+    price REAL,
+    
+    sl REAL,
+    tp REAL,
+    
+    pnl REAL,  -- Realized PnL (for CLOSE trades)
+    
+    success INTEGER DEFAULT 1,  -- 1=success, 0=failed
+    message TEXT,
+    
+    timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES algorithm_instances(id)
+)
+"""
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # DATABASE MANAGER
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -336,6 +435,11 @@ class InstanceDatabaseManager:
         cursor.execute(PROFILES_TABLE_SCHEMA)
         cursor.execute(INSTANCES_TABLE_SCHEMA)
         
+        # Create broker tables (Seed 14B)
+        cursor.execute(BROKER_STATE_TABLE_SCHEMA)
+        cursor.execute(BROKER_POSITIONS_TABLE_SCHEMA)
+        cursor.execute(BROKER_TRADES_TABLE_SCHEMA)
+        
         # Create indexes
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_instances_symbol 
@@ -348,6 +452,16 @@ class InstanceDatabaseManager:
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_profiles_symbol 
             ON profiles(symbol, status)
+        """)
+        
+        # Broker indexes (Seed 14B)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_broker_positions_instance 
+            ON broker_positions(instance_id, status)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_broker_trades_instance 
+            ON broker_trades(instance_id, timestamp DESC)
         """)
         
         conn.commit()
@@ -431,11 +545,11 @@ class InstanceDatabaseManager:
                 ON state_transitions_{safe_id}(timeframe, timestamp DESC)
             """)
             
-            # Initialize empty Markov matrices for both timeframes
+            # Initialize empty Markov matrices for both timeframes (SEED 13: 15m/1h)
             empty_matrix = json.dumps([[0.2] * 5 for _ in range(5)])
             empty_counts = json.dumps([[0] * 5 for _ in range(5)])
             
-            for tf in ['1m', '15m']:
+            for tf in ['15m', '1h']:
                 cursor.execute(f"""
                     INSERT INTO markov_matrices_{safe_id} 
                     (profile_id, timeframe, matrix_data, transition_counts, current_state)
@@ -1059,6 +1173,605 @@ class InstanceDatabaseManager:
         rows = cursor.fetchall()
         conn.close()
         
+        return [dict(row) for row in rows]
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # MT5 POSITION SYNC (SEED 10D)
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    def upsert_mt5_position(self, instance_id: str, mt5_position: dict) -> int:
+        """
+        Insert or update a position from MT5 live data.
+        Uses mt5_ticket as the unique identifier for matching.
+        
+        Args:
+            instance_id: Instance to sync to
+            mt5_position: Position data from MT5 with keys:
+                - ticket: MT5 position ticket
+                - symbol: Trading symbol
+                - type: 0=BUY, 1=SELL
+                - volume: Lot size
+                - price_open: Entry price
+                - price_current: Current price
+                - sl: Stop loss
+                - tp: Take profit
+                - profit: Current P&L
+                - swap: Accumulated swap
+                - commission: Commission paid
+                - magic: EA magic number
+                - time: Position open time (unix timestamp)
+        
+        Returns:
+            Position ID (existing or new)
+        """
+        safe_id = self._sanitize_instance_id(instance_id)
+        
+        ticket = mt5_position.get('ticket')
+        if not ticket:
+            raise ValueError("MT5 position must have a ticket number")
+        
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        # Check if position with this ticket exists
+        cursor.execute(f"""
+            SELECT id, status FROM positions_{safe_id}
+            WHERE mt5_ticket = ?
+        """, (ticket,))
+        
+        existing = cursor.fetchone()
+        now = datetime.utcnow().isoformat() + "Z"
+        
+        # Map MT5 type to direction
+        direction = "LONG" if mt5_position.get('type', 0) == 0 else "SHORT"
+        
+        # Convert MT5 timestamp to ISO format
+        entry_time = datetime.fromtimestamp(mt5_position.get('time', 0)).isoformat() + "Z" if mt5_position.get('time') else now
+        
+        if existing:
+            # Update existing position
+            position_id = existing['id']
+            cursor.execute(f"""
+                UPDATE positions_{safe_id} SET
+                    unrealized_pnl = ?,
+                    mt5_profit = ?,
+                    mt5_swap = ?,
+                    mt5_commission = ?,
+                    current_price = ?,
+                    stop_loss = ?,
+                    take_profit = ?,
+                    sync_status = 'SYNCED',
+                    last_sync_at = ?,
+                    updated_at = ?
+                WHERE id = ?
+            """, (
+                mt5_position.get('profit', 0),
+                mt5_position.get('profit', 0),
+                mt5_position.get('swap', 0),
+                mt5_position.get('commission', 0),
+                mt5_position.get('price_current'),
+                mt5_position.get('sl'),
+                mt5_position.get('tp'),
+                now,
+                now,
+                position_id
+            ))
+        else:
+            # Insert new position
+            cursor.execute(f"""
+                INSERT INTO positions_{safe_id} (
+                    symbol, direction, status, lots,
+                    entry_price, entry_time, entry_ticket,
+                    stop_loss, take_profit,
+                    unrealized_pnl, mt5_ticket, mt5_magic,
+                    mt5_profit, mt5_swap, mt5_commission,
+                    current_price, sync_status, last_sync_at,
+                    signal_source
+                ) VALUES (?, ?, 'OPEN', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED', ?, 'MT5_SYNC')
+            """, (
+                mt5_position.get('symbol'),
+                direction,
+                mt5_position.get('volume', 0),
+                mt5_position.get('price_open'),
+                entry_time,
+                ticket,
+                mt5_position.get('sl'),
+                mt5_position.get('tp'),
+                mt5_position.get('profit', 0),
+                ticket,
+                mt5_position.get('magic'),
+                mt5_position.get('profit', 0),
+                mt5_position.get('swap', 0),
+                mt5_position.get('commission', 0),
+                mt5_position.get('price_current'),
+                now
+            ))
+            position_id = cursor.lastrowid
+        
+        conn.commit()
+        conn.close()
+        
+        return position_id
+    
+    def mark_positions_closed_by_mt5(self, instance_id: str, active_tickets: List[int]):
+        """
+        Mark positions as CLOSED_MT5 if they're no longer in the active MT5 positions.
+        This handles positions that were closed externally in MT5.
+        
+        Args:
+            instance_id: Instance to check
+            active_tickets: List of currently open MT5 ticket numbers
+        """
+        safe_id = self._sanitize_instance_id(instance_id)
+        
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        now = datetime.utcnow().isoformat() + "Z"
+        
+        if active_tickets:
+            # Mark positions not in active list as closed
+            placeholders = ','.join(['?' for _ in active_tickets])
+            cursor.execute(f"""
+                UPDATE positions_{safe_id} SET
+                    status = 'CLOSED',
+                    sync_status = 'CLOSED_MT5',
+                    exit_time = ?,
+                    exit_reason = 'MT5_EXTERNAL_CLOSE',
+                    realized_pnl = mt5_profit,
+                    updated_at = ?
+                WHERE status = 'OPEN' 
+                AND sync_status = 'SYNCED'
+                AND mt5_ticket IS NOT NULL
+                AND mt5_ticket NOT IN ({placeholders})
+            """, [now, now] + active_tickets)
+        else:
+            # No active positions - close all synced positions
+            cursor.execute(f"""
+                UPDATE positions_{safe_id} SET
+                    status = 'CLOSED',
+                    sync_status = 'CLOSED_MT5',
+                    exit_time = ?,
+                    exit_reason = 'MT5_EXTERNAL_CLOSE',
+                    realized_pnl = mt5_profit,
+                    updated_at = ?
+                WHERE status = 'OPEN' 
+                AND sync_status = 'SYNCED'
+                AND mt5_ticket IS NOT NULL
+            """, (now, now))
+        
+        affected = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        if affected > 0:
+            print(f"[InstanceDB] Marked {affected} positions as closed by MT5")
+        
+        return affected
+    
+    def get_positions_with_sync_status(self, instance_id: str, limit: int = 100) -> List[dict]:
+        """
+        Get positions with their sync status for the live feed display.
+        Includes all fields needed for the frontend table.
+        """
+        safe_id = self._sanitize_instance_id(instance_id)
+        
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        cursor.execute(f"""
+            SELECT * FROM positions_{safe_id}
+            ORDER BY 
+                CASE WHEN status IN ('PENDING', 'OPEN') THEN 0 ELSE 1 END,
+                created_at DESC
+            LIMIT ?
+        """, (limit,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [dict(row) for row in rows]
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # BROKER OPERATIONS (Seed 14B - Virtual Broker)
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    def init_broker_state(self, instance_id: str, mode: str = "SIM", 
+                          initial_balance: float = 10000.0) -> dict:
+        """
+        Initialize broker state for an instance.
+        Creates record if doesn't exist, returns existing if it does.
+        
+        Args:
+            instance_id: Instance ID
+            mode: "SIM" or "LIVE"
+            initial_balance: Starting balance for SIM mode
+            
+        Returns:
+            Broker state dict
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        now = datetime.utcnow().isoformat() + "Z"
+        
+        # Check if exists
+        cursor.execute("SELECT * FROM broker_state WHERE instance_id = ?", (instance_id,))
+        existing = cursor.fetchone()
+        
+        if existing:
+            conn.close()
+            return dict(existing)
+        
+        # Create new
+        cursor.execute("""
+            INSERT INTO broker_state (instance_id, mode, initial_balance, last_equity, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (instance_id, mode.upper(), initial_balance, initial_balance, now, now))
+        
+        conn.commit()
+        
+        cursor.execute("SELECT * FROM broker_state WHERE instance_id = ?", (instance_id,))
+        result = dict(cursor.fetchone())
+        conn.close()
+        
+        print(f"[InstanceDB] Initialized broker state for {instance_id} ({mode})")
+        return result
+    
+    def get_broker_state(self, instance_id: str) -> Optional[dict]:
+        """Get broker state for an instance"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM broker_state WHERE instance_id = ?", (instance_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        return dict(row) if row else None
+    
+    def update_broker_state(self, instance_id: str, **kwargs) -> bool:
+        """
+        Update broker state fields.
+        
+        Args:
+            instance_id: Instance ID
+            **kwargs: Fields to update (realized_pnl, last_equity, last_unrealized_pnl, position_count)
+            
+        Returns:
+            True if updated
+        """
+        if not kwargs:
+            return False
+        
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        now = datetime.utcnow().isoformat() + "Z"
+        
+        # Build SET clause
+        allowed_fields = {'realized_pnl', 'last_equity', 'last_unrealized_pnl', 'position_count', 'mode'}
+        updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
+        
+        if not updates:
+            conn.close()
+            return False
+        
+        updates['updated_at'] = now
+        set_clause = ', '.join(f"{k} = ?" for k in updates.keys())
+        values = list(updates.values()) + [instance_id]
+        
+        cursor.execute(f"""
+            UPDATE broker_state SET {set_clause} WHERE instance_id = ?
+        """, values)
+        
+        conn.commit()
+        conn.close()
+        return True
+    
+    def save_broker_position(self, instance_id: str, position: dict) -> int:
+        """
+        Save or update a broker position.
+        Uses (instance_id, ticket) as unique key.
+        
+        Args:
+            instance_id: Instance ID
+            position: Position dict with keys:
+                - ticket, symbol, direction, volume, open_price, open_time
+                - sl, tp, current_price, unrealized_pnl, comment
+                - status (OPEN/CLOSED), close_price, close_time, close_reason, realized_pnl
+                
+        Returns:
+            Position ID
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        now = datetime.utcnow().isoformat() + "Z"
+        
+        ticket = position.get('ticket')
+        if not ticket:
+            raise ValueError("Position must have a ticket number")
+        
+        # Check if exists
+        cursor.execute("""
+            SELECT id FROM broker_positions WHERE instance_id = ? AND ticket = ?
+        """, (instance_id, ticket))
+        
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Update
+            cursor.execute("""
+                UPDATE broker_positions SET
+                    current_price = ?,
+                    unrealized_pnl = ?,
+                    sl = ?,
+                    tp = ?,
+                    status = ?,
+                    close_price = ?,
+                    close_time = ?,
+                    close_reason = ?,
+                    realized_pnl = ?,
+                    updated_at = ?
+                WHERE instance_id = ? AND ticket = ?
+            """, (
+                position.get('current_price'),
+                position.get('unrealized_pnl', position.get('pnl', 0)),
+                position.get('sl'),
+                position.get('tp'),
+                position.get('status', 'OPEN'),
+                position.get('close_price'),
+                position.get('close_time'),
+                position.get('close_reason'),
+                position.get('realized_pnl'),
+                now,
+                instance_id,
+                ticket
+            ))
+            position_id = existing['id']
+        else:
+            # Insert
+            open_time = position.get('open_time')
+            if hasattr(open_time, 'isoformat'):
+                open_time = open_time.isoformat() + "Z"
+            
+            cursor.execute("""
+                INSERT INTO broker_positions (
+                    instance_id, ticket, symbol, direction, volume,
+                    open_price, open_time, current_price, unrealized_pnl,
+                    sl, tp, status, comment, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                instance_id,
+                ticket,
+                position.get('symbol'),
+                position.get('direction'),
+                position.get('volume'),
+                position.get('open_price'),
+                open_time,
+                position.get('current_price', position.get('open_price')),
+                position.get('unrealized_pnl', position.get('pnl', 0)),
+                position.get('sl'),
+                position.get('tp'),
+                position.get('status', 'OPEN'),
+                position.get('comment', ''),
+                now,
+                now
+            ))
+            position_id = cursor.lastrowid
+        
+        conn.commit()
+        conn.close()
+        return position_id
+    
+    def get_broker_positions(self, instance_id: str, status: str = None) -> List[dict]:
+        """
+        Get broker positions for an instance.
+        
+        Args:
+            instance_id: Instance ID
+            status: Filter by status (OPEN, CLOSED, or None for all)
+            
+        Returns:
+            List of position dicts
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        if status:
+            cursor.execute("""
+                SELECT * FROM broker_positions 
+                WHERE instance_id = ? AND status = ?
+                ORDER BY open_time DESC
+            """, (instance_id, status))
+        else:
+            cursor.execute("""
+                SELECT * FROM broker_positions 
+                WHERE instance_id = ?
+                ORDER BY 
+                    CASE WHEN status = 'OPEN' THEN 0 ELSE 1 END,
+                    open_time DESC
+            """, (instance_id,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+    
+    def close_broker_position(self, instance_id: str, ticket: int,
+                              close_price: float, close_reason: str,
+                              realized_pnl: float) -> bool:
+        """
+        Close a broker position.
+        
+        Args:
+            instance_id: Instance ID
+            ticket: Position ticket
+            close_price: Close price
+            close_reason: Reason (MANUAL, SL_HIT, TP_HIT, SIGNAL)
+            realized_pnl: Final PnL
+            
+        Returns:
+            True if closed
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        now = datetime.utcnow().isoformat() + "Z"
+        
+        cursor.execute("""
+            UPDATE broker_positions SET
+                status = 'CLOSED',
+                close_price = ?,
+                close_time = ?,
+                close_reason = ?,
+                realized_pnl = ?,
+                updated_at = ?
+            WHERE instance_id = ? AND ticket = ? AND status = 'OPEN'
+        """, (close_price, now, close_reason, realized_pnl, now, instance_id, ticket))
+        
+        affected = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        return affected > 0
+    
+    def log_broker_trade(self, instance_id: str, trade: dict) -> int:
+        """
+        Log a broker trade event.
+        
+        Args:
+            instance_id: Instance ID
+            trade: Trade dict with keys:
+                - trade_type: OPEN | CLOSE | MODIFY
+                - symbol, direction, volume, price
+                - sl, tp, pnl
+                - position_ticket, success, message
+                
+        Returns:
+            Trade log ID
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        now = datetime.utcnow().isoformat() + "Z"
+        
+        cursor.execute("""
+            INSERT INTO broker_trades (
+                instance_id, position_ticket, trade_type, symbol,
+                direction, volume, price, sl, tp, pnl,
+                success, message, timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            instance_id,
+            trade.get('position_ticket', trade.get('ticket')),
+            trade.get('trade_type'),
+            trade.get('symbol'),
+            trade.get('direction'),
+            trade.get('volume'),
+            trade.get('price'),
+            trade.get('sl'),
+            trade.get('tp'),
+            trade.get('pnl'),
+            1 if trade.get('success', True) else 0,
+            trade.get('message', ''),
+            now
+        ))
+        
+        trade_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return trade_id
+    
+    def get_broker_trades(self, instance_id: str, limit: int = 100) -> List[dict]:
+        """
+        Get trade history for an instance.
+        
+        Args:
+            instance_id: Instance ID
+            limit: Max trades to return
+            
+        Returns:
+            List of trade dicts
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT * FROM broker_trades 
+            WHERE instance_id = ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """, (instance_id, limit))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+    
+    def get_broker_stats(self, instance_id: str) -> dict:
+        """
+        Get aggregated broker statistics.
+        
+        Returns:
+            Dict with total_trades, winning_trades, total_pnl, win_rate, etc.
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        # Get closed positions stats
+        cursor.execute("""
+            SELECT 
+                COUNT(*) as total_trades,
+                SUM(CASE WHEN realized_pnl > 0 THEN 1 ELSE 0 END) as winning_trades,
+                SUM(CASE WHEN realized_pnl < 0 THEN 1 ELSE 0 END) as losing_trades,
+                SUM(realized_pnl) as total_pnl,
+                AVG(realized_pnl) as avg_pnl,
+                MAX(realized_pnl) as best_trade,
+                MIN(realized_pnl) as worst_trade,
+                SUM(CASE WHEN realized_pnl > 0 THEN realized_pnl ELSE 0 END) as gross_profit,
+                SUM(CASE WHEN realized_pnl < 0 THEN ABS(realized_pnl) ELSE 0 END) as gross_loss
+            FROM broker_positions
+            WHERE instance_id = ? AND status = 'CLOSED'
+        """, (instance_id,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        stats = dict(row) if row else {}
+        
+        # Calculate derived stats
+        total = stats.get('total_trades', 0) or 0
+        wins = stats.get('winning_trades', 0) or 0
+        gross_profit = stats.get('gross_profit', 0) or 0
+        gross_loss = stats.get('gross_loss', 0) or 0
+        
+        stats['win_rate'] = (wins / total * 100) if total > 0 else 0
+        stats['profit_factor'] = (gross_profit / gross_loss) if gross_loss > 0 else 0
+        
+        return stats
+    
+    def restore_broker_positions(self, instance_id: str) -> List[dict]:
+        """
+        Restore open positions from database for VirtualBroker recovery.
+        Called when broker is restarted to resume state.
+        
+        Returns:
+            List of open position dicts
+        """
+        return self.get_broker_positions(instance_id, status='OPEN')
+    
+    def get_all_broker_states(self) -> List[dict]:
+        """
+        Get broker state for all instances.
+        Used for API overview endpoint.
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT bs.*, ai.display_name, ai.symbol, ai.status as instance_status
+            FROM broker_state bs
+            LEFT JOIN algorithm_instances ai ON bs.instance_id = ai.id
+            ORDER BY bs.updated_at DESC
+        """)
+        
+        rows = cursor.fetchall()
+        conn.close()
         return [dict(row) for row in rows]
 
 

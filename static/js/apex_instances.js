@@ -1,11 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   APEX INSTANCE BROWSER V2.4 - Full Schema Tables
+   APEX INSTANCE BROWSER V3.0 - Dual-Timeframe Sentiments & Live Position Feed
+   (SEED 10D: The Stage Hands)
    
-   Bottom-left panel in Database view showing saved algorithms.
-   - Shows ALL algorithms (mirrors APEX dropdown)
-   - Favorites (★) at top, Saved in middle, Archived at bottom
-   - Right-click context menu for favorite/archive/delete
-   - PHASE 2: Loads data from 4 linked database tables with FULL SCHEMA
+   Features:
+   - POSITIONS tab: Unified, single table (no timeframe split)
+   - SENTIMENTS tab: Dual-timeframe sub-tabs [15M | 1H]
+   - Score columns with color-coded cells (PA, KL, MOM, VOL, STR, COMP)
+   - Live MT5 position sync indicator
+   - Multiple instances can run simultaneously
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const ApexInstanceBrowser = {
@@ -14,19 +16,28 @@ const ApexInstanceBrowser = {
     currentSymbolId: null,
     currentInstanceId: null,
     currentTab: 'positions',
+    currentSentimentTimeframe: '15m',  // SEED 10D: Track sentiment sub-tab
     isDropdownOpen: false,
     isLoading: false,
+    syncStatus: null,  // SEED 10D: Track live sync status
     
-    dataCache: { positions: null, sentiments: null, transitions: null, matrices: null },
+    dataCache: { 
+        positions: null, 
+        sentiments_15m: null,   // SEED 10D: Separate cache per timeframe
+        sentiments_1h: null, 
+        transitions: null, 
+        matrices: null 
+    },
     
     TRADING_VIEWS_KEY: 'apex_trading_views',
     SELECTED_INSTANCE_KEY: 'apex_selected_instance',
     
+    // SEED 10D: Updated tabs with sub-tab support
     tabs: [
-        { id: 'positions', label: 'Positions', icon: '◆', endpoint: '/api/instance/{id}/positions' },
-        { id: 'sentiments', label: 'Sentiments', icon: '◈', endpoint: '/api/instance/{id}/sentiments' },
-        { id: 'transitions', label: 'Transitions', icon: '⇄', endpoint: '/api/instance/{id}/transitions' },
-        { id: 'matrices', label: 'Matrices', icon: '▦', endpoint: '/api/instance/{id}/matrices' }
+        { id: 'positions', label: 'Positions', icon: '◆', endpoint: '/api/instance/{id}/positions', hasSubTabs: false },
+        { id: 'sentiments', label: 'Sentiments', icon: '◈', endpoint: '/api/instance/{id}/sentiments', hasSubTabs: true, subTabs: ['15M', '1H'] },
+        { id: 'transitions', label: 'Transitions', icon: '⇄', endpoint: '/api/instance/{id}/transitions', hasSubTabs: false },
+        { id: 'matrices', label: 'Matrices', icon: '▦', endpoint: '/api/instance/{id}/matrices', hasSubTabs: false }
     ],
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -40,7 +51,8 @@ const ApexInstanceBrowser = {
         this.restoreSelection();
         this.render();
         this.bindGlobalEvents();
-        console.log('[InstanceBrowser] Initialized for symbol:', this.currentSymbol);
+        this.startSyncStatusPolling();
+        console.log('[InstanceBrowser] V3.0 Initialized for symbol:', this.currentSymbol);
     },
     
     restoreSelection() {
@@ -67,6 +79,82 @@ const ApexInstanceBrowser = {
         } catch (e) { return null; }
     },
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // LIVE SYNC STATUS POLLING (SEED 10D)
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    startSyncStatusPolling() {
+        // Poll sync status every 2 seconds when on positions tab
+        setInterval(() => {
+            if (this.currentInstanceId && this.currentTab === 'positions') {
+                this.fetchSyncStatus();
+            }
+        }, 2000);
+    },
+    
+    async fetchSyncStatus() {
+        try {
+            const response = await fetch(`/api/instance/${this.currentInstanceId}/sync/status`);
+            const result = await response.json();
+            if (result.success) {
+                this.syncStatus = result.data;
+                this.updateSyncIndicator();
+            }
+        } catch (e) {
+            // Silent fail - sync status is informational
+        }
+    },
+    
+    updateSyncIndicator() {
+        const indicator = document.getElementById('sync-indicator');
+        if (!indicator) return;
+        
+        if (this.syncStatus?.running) {
+            indicator.className = 'sync-indicator sync-indicator--active';
+            indicator.innerHTML = `
+                <span class="sync-indicator__dot"></span>
+                <span class="sync-indicator__label">LIVE</span>
+                <span class="sync-indicator__count">${this.syncStatus.position_count || 0}</span>
+            `;
+        } else {
+            indicator.className = 'sync-indicator sync-indicator--offline';
+            indicator.innerHTML = `
+                <span class="sync-indicator__dot"></span>
+                <span class="sync-indicator__label">OFFLINE</span>
+            `;
+        }
+    },
+    
+    async toggleSync() {
+        if (!this.currentInstanceId) return;
+        
+        const action = this.syncStatus?.running ? 'stop' : 'start';
+        const symbol = this.getSavedSelection()?.symbol || 'XAUJ26';
+        
+        try {
+            const response = await fetch(`/api/instance/${this.currentInstanceId}/sync/${action}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol })
+            });
+            const result = await response.json();
+            if (result.success) {
+                await this.fetchSyncStatus();
+                if (action === 'start') {
+                    // Refresh positions after starting sync
+                    this.dataCache.positions = null;
+                    this.loadTabContent();
+                }
+            }
+        } catch (e) {
+            console.error('[InstanceBrowser] Sync toggle failed:', e);
+        }
+    },
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════════════════════════════════════
+    
     render() {
         const savedSelection = this.getSavedSelection();
         const headerLabel = savedSelection?.name || 'Select Algorithm';
@@ -85,6 +173,7 @@ const ApexInstanceBrowser = {
                         <span class="instance-selector__label" id="instance-label">${headerLabel}</span>
                         <span class="${statusClass}" id="instance-status">${headerStatus}</span>
                     </div>
+                    ${this.renderTimeframeTabs()}
                 </div>
                 <div class="instance-dropdown" id="instance-dropdown">
                     <div class="instance-dropdown__content" id="instance-dropdown-content"></div>
@@ -97,6 +186,7 @@ const ApexInstanceBrowser = {
                         </button>
                     `).join('')}
                 </div>
+                ${this.renderSubTabs()}
                 <div class="instance-content" id="instance-content">
                     <div class="instance-empty">
                         <div class="instance-empty__icon">◎</div>
@@ -108,6 +198,56 @@ const ApexInstanceBrowser = {
         this.bindEvents();
         this.renderDropdownContent();
         if (this.currentInstanceId) this.loadTabContent();
+    },
+    
+    // SEED 10D: Render timeframe tabs in header (like screenshot)
+    renderTimeframeTabs() {
+        return `
+            <div class="instance-timeframe-tabs" id="timeframe-tabs">
+                <button class="tf-tab ${this.currentSentimentTimeframe === '15m' ? 'tf-tab--active' : ''}" 
+                        data-tf="15m" onclick="ApexInstanceBrowser.switchSentimentTimeframe('15m')">15M</button>
+                <button class="tf-tab ${this.currentSentimentTimeframe === '1h' ? 'tf-tab--active' : ''}" 
+                        data-tf="1h" onclick="ApexInstanceBrowser.switchSentimentTimeframe('1h')">1H</button>
+            </div>
+        `;
+    },
+    
+    // SEED 10D: Render sub-tabs for sentiments (when on sentiments tab)
+    renderSubTabs() {
+        const currentTabConfig = this.tabs.find(t => t.id === this.currentTab);
+        if (!currentTabConfig?.hasSubTabs) return '';
+        
+        return `
+            <div class="instance-subtabs" id="instance-subtabs">
+                ${currentTabConfig.subTabs.map(st => {
+                    const tf = st.toLowerCase();
+                    const isActive = this.currentSentimentTimeframe === tf;
+                    return `
+                        <button class="instance-subtab ${isActive ? 'instance-subtab--active' : ''}" 
+                                data-subtab="${tf}" 
+                                onclick="ApexInstanceBrowser.switchSentimentTimeframe('${tf}')">
+                            ${st}
+                        </button>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    },
+    
+    // SEED 10D: Switch sentiment timeframe
+    switchSentimentTimeframe(timeframe) {
+        this.currentSentimentTimeframe = timeframe;
+        
+        // Update sub-tab active state
+        document.querySelectorAll('.instance-subtab, .tf-tab').forEach(btn => {
+            btn.classList.toggle('instance-subtab--active', btn.dataset.subtab === timeframe || btn.dataset.tf === timeframe);
+            btn.classList.toggle('tf-tab--active', btn.dataset.tf === timeframe);
+        });
+        
+        // Reload content if on sentiments tab
+        if (this.currentTab === 'sentiments') {
+            this.loadTabContent();
+        }
     },
     
     bindEvents() {
@@ -269,7 +409,8 @@ const ApexInstanceBrowser = {
     
     clearSelection() {
         this.currentInstanceId = null;
-        this.dataCache = { positions: null, sentiments: null, transitions: null, matrices: null };
+        this.dataCache = { positions: null, sentiments_15m: null, sentiments_1h: null, transitions: null, matrices: null };
+        this.syncStatus = null;
         try { localStorage.removeItem(this.SELECTED_INSTANCE_KEY); } catch (e) {}
         document.getElementById('instance-label').textContent = 'Select Algorithm';
         const status = document.getElementById('instance-status');
@@ -284,7 +425,7 @@ const ApexInstanceBrowser = {
     async selectInstance(instanceId, name, symbol) {
         console.log('[InstanceBrowser] selectInstance:', { instanceId, name, symbol });
         this.currentInstanceId = instanceId;
-        this.dataCache = { positions: null, sentiments: null, transitions: null, matrices: null };
+        this.dataCache = { positions: null, sentiments_15m: null, sentiments_1h: null, transitions: null, matrices: null };
         this.saveSelection(instanceId, name, symbol);
         document.getElementById('instance-label').textContent = name;
         const status = document.getElementById('instance-status');
@@ -298,6 +439,7 @@ const ApexInstanceBrowser = {
         this.showLoading();
         await this.initializeInstanceTables(instanceId, name, symbol);
         await this.loadTabContent();
+        await this.fetchSyncStatus();
     },
     
     async initializeInstanceTables(instanceId, name, symbol) {
@@ -325,7 +467,9 @@ const ApexInstanceBrowser = {
         this.container.querySelectorAll('.instance-tab').forEach(tab => {
             tab.classList.toggle('instance-tab--active', tab.dataset.tab === tabId);
         });
-        this.loadTabContent();
+        
+        // Re-render to show/hide sub-tabs
+        this.render();
     },
     
     showLoading() {
@@ -336,14 +480,33 @@ const ApexInstanceBrowser = {
     async loadTabContent() {
         const content = document.getElementById('instance-content');
         if (!content || !this.currentInstanceId) { this.renderEmptyContent(); return; }
-        if (this.dataCache[this.currentTab]) { this.renderTabData(this.currentTab, this.dataCache[this.currentTab]); return; }
+        
+        // SEED 10D: Use timeframe-specific cache for sentiments
+        const cacheKey = this.currentTab === 'sentiments' 
+            ? `sentiments_${this.currentSentimentTimeframe}` 
+            : this.currentTab;
+        
+        if (this.dataCache[cacheKey]) { 
+            this.renderTabData(this.currentTab, this.dataCache[cacheKey]); 
+            return; 
+        }
+        
         this.showLoading();
         const tab = this.tabs.find(t => t.id === this.currentTab);
-        const endpoint = tab.endpoint.replace('{id}', this.currentInstanceId);
+        let endpoint = tab.endpoint.replace('{id}', this.currentInstanceId);
+        
+        // SEED 10D: Add timeframe param for sentiments
+        if (this.currentTab === 'sentiments') {
+            endpoint += `/${this.currentSentimentTimeframe}`;
+        }
+        
         try {
-            const response = await fetch(endpoint + '?limit=50&timeframe=15m');
+            const response = await fetch(endpoint + '?limit=50');
             const result = await response.json();
-            if (result.success && result.data) { this.dataCache[this.currentTab] = result.data; this.renderTabData(this.currentTab, result.data); }
+            if (result.success && result.data) { 
+                this.dataCache[cacheKey] = result.data; 
+                this.renderTabData(this.currentTab, result.data); 
+            }
             else this.renderNoData(this.currentTab);
         } catch (e) { this.renderNoData(this.currentTab); }
     },
@@ -362,52 +525,105 @@ const ApexInstanceBrowser = {
     },
     
     // ═══════════════════════════════════════════════════════════════════════
-    // TABLE RENDERERS - FULL SCHEMA
+    // TABLE RENDERERS - SEED 10D UPDATED
     // ═══════════════════════════════════════════════════════════════════════
     
+    // SEED 10D: Positions table with live sync indicator
     renderPositionsTable(data) {
-        return `<div class="instance-table-wrap"><table class="instance-table"><thead><tr>
-            <th>Time</th><th>Symbol</th><th>Dir</th><th>Status</th><th>Entry</th><th>Exit</th><th>Lots</th><th>SL</th><th>TP</th><th>P/L</th><th>Signal</th>
-        </tr></thead><tbody>
-            ${data.map(row => `<tr class="${row.direction === 'LONG' ? 'row--bull' : row.direction === 'SHORT' ? 'row--bear' : ''}">
-                <td>${this.formatTime(row.entry_time || row.created_at)}</td>
-                <td>${row.symbol || '--'}</td>
-                <td class="${row.direction === 'LONG' ? 'cell--bull' : 'cell--bear'}">${row.direction || '--'}</td>
-                <td><span class="status-badge status-badge--${(row.status || 'pending').toLowerCase()}">${row.status || '--'}</span></td>
-                <td>${row.entry_price?.toFixed(2) || '--'}</td>
-                <td>${row.exit_price?.toFixed(2) || '--'}</td>
-                <td>${row.lots?.toFixed(2) || '--'}</td>
-                <td>${row.stop_loss?.toFixed(2) || '--'}</td>
-                <td>${row.take_profit?.toFixed(2) || '--'}</td>
-                <td class="${(row.realized_pnl || 0) >= 0 ? 'cell--bull' : 'cell--bear'}">${row.realized_pnl != null ? '$' + row.realized_pnl.toFixed(2) : '--'}</td>
-                <td>${row.signal_source || '--'}</td>
-            </tr>`).join('')}
-        </tbody></table><div class="instance-table__count">${data.length} positions</div></div>`;
+        const syncIndicator = `
+            <div class="instance-table__header">
+                <div id="sync-indicator" class="sync-indicator sync-indicator--offline">
+                    <span class="sync-indicator__dot"></span>
+                    <span class="sync-indicator__label">OFFLINE</span>
+                </div>
+                <button class="sync-toggle-btn" onclick="ApexInstanceBrowser.toggleSync()">
+                    ${this.syncStatus?.running ? 'Stop Sync' : 'Start Sync'}
+                </button>
+            </div>
+        `;
+        
+        return `<div class="instance-table-wrap">
+            ${syncIndicator}
+            <table class="instance-table"><thead><tr>
+                <th>Time</th><th>Symbol</th><th>Dir</th><th>Status</th><th>Entry</th><th>Current</th><th>Lots</th><th>SL</th><th>TP</th><th>P/L</th><th>Sync</th>
+            </tr></thead><tbody>
+                ${data.map(row => {
+                    const pnl = row.mt5_profit ?? row.unrealized_pnl ?? row.realized_pnl ?? 0;
+                    const pnlClass = pnl >= 0 ? 'cell--bull' : 'cell--bear';
+                    const syncClass = row.sync_status === 'SYNCED' ? 'sync-badge--live' : 
+                                      row.sync_status === 'CLOSED_MT5' ? 'sync-badge--closed' : 'sync-badge--pending';
+                    return `<tr class="${row.direction === 'LONG' ? 'row--bull' : row.direction === 'SHORT' ? 'row--bear' : ''}">
+                        <td>${this.formatTime(row.entry_time || row.created_at)}</td>
+                        <td>${row.symbol || '--'}</td>
+                        <td class="${row.direction === 'LONG' ? 'cell--bull' : 'cell--bear'}">${row.direction || '--'}</td>
+                        <td><span class="status-badge status-badge--${(row.status || 'pending').toLowerCase()}">${row.status || '--'}</span></td>
+                        <td>${row.entry_price?.toFixed(2) || '--'}</td>
+                        <td>${row.current_price?.toFixed(2) || '--'}</td>
+                        <td>${row.lots?.toFixed(2) || '--'}</td>
+                        <td>${row.stop_loss?.toFixed(2) || '--'}</td>
+                        <td>${row.take_profit?.toFixed(2) || '--'}</td>
+                        <td class="${pnlClass}">${pnl != null ? '$' + pnl.toFixed(2) : '--'}</td>
+                        <td><span class="sync-badge ${syncClass}">${row.sync_status || 'PENDING'}</span></td>
+                    </tr>`;
+                }).join('')}
+            </tbody></table>
+            <div class="instance-table__count">${data.length} positions</div>
+        </div>`;
     },
     
+    // SEED 10D: Sentiments table with score columns
     renderSentimentsTable(data) {
-        return `<div class="instance-table-wrap"><table class="instance-table"><thead><tr>
-            <th>Time</th><th>TF</th><th>Bias</th><th>Composite</th><th>Trend</th><th>Momentum</th><th>Volatility</th><th>Volume</th><th>Signal</th><th>Conf</th>
-        </tr></thead><tbody>
-            ${data.map(row => {
-                const score = row.composite_score || 0;
-                const cls = score > 0.2 ? 'cell--bull' : score < -0.2 ? 'cell--bear' : '';
-                // Use matrix_bias_label from DB, fallback to calculated
-                const biasLabel = row.matrix_bias_label || this.getBiasLabel(row.matrix_bias);
-                return `<tr>
-                    <td>${this.formatTime(row.timestamp)}</td>
-                    <td>${row.timeframe || '--'}</td>
-                    <td class="${cls}">${biasLabel}</td>
-                    <td class="${cls}">${score.toFixed(3)}</td>
-                    <td>${row.trend_score?.toFixed(2) || row.price_action_score?.toFixed(2) || '--'}</td>
-                    <td>${row.momentum_score?.toFixed(2) || '--'}</td>
-                    <td>${row.volatility_score?.toFixed(2) || row.volume_score?.toFixed(2) || '--'}</td>
-                    <td>${row.volume_score?.toFixed(2) || row.structure_score?.toFixed(2) || '--'}</td>
-                    <td class="${row.signal === 'BUY' ? 'cell--bull' : row.signal === 'SELL' ? 'cell--bear' : ''}">${row.signal || '--'}</td>
-                    <td>${row.confidence?.toFixed(2) || (row.processing_time_ms ? row.processing_time_ms + 'ms' : '--')}</td>
-                </tr>`;
-            }).join('')}
-        </tbody></table><div class="instance-table__count">${data.length} readings</div></div>`;
+        return `<div class="instance-table-wrap">
+            <table class="instance-table instance-table--scores"><thead><tr>
+                <th>Time</th><th>PA</th><th>KL</th><th>MOM</th><th>VOL</th><th>STR</th><th>COMP</th><th>Bias</th>
+            </tr></thead><tbody>
+                ${data.map(row => {
+                    const comp = row.composite_score || 0;
+                    return `<tr>
+                        <td>${this.formatTime(row.timestamp)}</td>
+                        <td>${this.renderScoreCell(row.price_action_score)}</td>
+                        <td>${this.renderScoreCell(row.key_levels_score)}</td>
+                        <td>${this.renderScoreCell(row.momentum_score)}</td>
+                        <td>${this.renderScoreCell(row.volume_score)}</td>
+                        <td>${this.renderScoreCell(row.structure_score)}</td>
+                        <td>${this.renderScoreCell(comp, true)}</td>
+                        <td>${this.renderBiasBadge(row.matrix_bias, row.matrix_bias_label)}</td>
+                    </tr>`;
+                }).join('')}
+            </tbody></table>
+            <div class="instance-table__count">${data.length} readings (${this.currentSentimentTimeframe.toUpperCase()})</div>
+        </div>`;
+    },
+    
+    // SEED 10D: Color-coded score cell renderer
+    renderScoreCell(score, isComposite = false) {
+        if (score == null || isNaN(score)) return '<span class="score-cell score-cell--neutral">--</span>';
+        
+        const value = parseFloat(score);
+        let cls = 'score-cell';
+        
+        if (value > 0.3) cls += ' score-cell--bullish';
+        else if (value < -0.3) cls += ' score-cell--bearish';
+        else cls += ' score-cell--neutral';
+        
+        if (isComposite) cls += ' score-cell--composite';
+        
+        return `<span class="${cls}">${value.toFixed(2)}</span>`;
+    },
+    
+    // SEED 10D: Bias badge renderer
+    renderBiasBadge(bias, label) {
+        const biasVal = parseInt(bias) || 0;
+        let cls = 'bias-badge';
+        
+        if (biasVal >= 1) cls += ' bias-badge--bullish';
+        else if (biasVal <= -1) cls += ' bias-badge--bearish';
+        else cls += ' bias-badge--neutral';
+        
+        if (Math.abs(biasVal) >= 2) cls += ' bias-badge--strong';
+        
+        const displayLabel = label || this.getBiasLabel(biasVal);
+        return `<span class="${cls}">${displayLabel}</span>`;
     },
     
     getBiasLabel(bias) {
@@ -444,7 +660,7 @@ const ApexInstanceBrowser = {
                 const cls = row.trend_bias > 0.1 ? 'cell--bull' : row.trend_bias < -0.1 ? 'cell--bear' : '';
                 const stateLabel = stateLabels[(row.current_state || 0) + 2] || 'Unknown';
                 return `<tr>
-                    <td>${this.formatTime(row.timestamp)}</td>
+                    <td>${this.formatTime(row.updated_at)}</td>
                     <td>${row.timeframe || '--'}</td>
                     <td class="${cls}">${stateLabel}</td>
                     <td>${row.stability_score?.toFixed(2) || '--'}</td>
@@ -456,7 +672,7 @@ const ApexInstanceBrowser = {
     },
     
     // ═══════════════════════════════════════════════════════════════════════
-    // EMPTY TABLE RENDERERS - FULL SCHEMA
+    // EMPTY TABLE RENDERERS
     // ═══════════════════════════════════════════════════════════════════════
     
     renderNoData(tabId) {
@@ -472,19 +688,32 @@ const ApexInstanceBrowser = {
     },
     
     renderPositionsTableEmpty() {
-        return `<div class="instance-table-wrap"><table class="instance-table"><thead><tr>
-            <th>Time</th><th>Symbol</th><th>Dir</th><th>Status</th><th>Entry</th><th>Exit</th><th>Lots</th><th>SL</th><th>TP</th><th>P/L</th><th>Signal</th>
-        </tr></thead><tbody>
-            <tr class="instance-table__row--placeholder"><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
-        </tbody></table><div class="instance-table__hint">No positions yet • Data will appear when trading is active</div></div>`;
+        return `<div class="instance-table-wrap">
+            <div class="instance-table__header">
+                <div id="sync-indicator" class="sync-indicator sync-indicator--offline">
+                    <span class="sync-indicator__dot"></span>
+                    <span class="sync-indicator__label">OFFLINE</span>
+                </div>
+                <button class="sync-toggle-btn" onclick="ApexInstanceBrowser.toggleSync()">Start Sync</button>
+            </div>
+            <table class="instance-table"><thead><tr>
+                <th>Time</th><th>Symbol</th><th>Dir</th><th>Status</th><th>Entry</th><th>Current</th><th>Lots</th><th>SL</th><th>TP</th><th>P/L</th><th>Sync</th>
+            </tr></thead><tbody>
+                <tr class="instance-table__row--placeholder"><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+            </tbody></table>
+            <div class="instance-table__hint">No positions yet • Data will appear when trading is active</div>
+        </div>`;
     },
     
     renderSentimentsTableEmpty() {
-        return `<div class="instance-table-wrap"><table class="instance-table"><thead><tr>
-            <th>Time</th><th>TF</th><th>Bias</th><th>Composite</th><th>Trend</th><th>Momentum</th><th>Volatility</th><th>Volume</th><th>Signal</th><th>Conf</th>
-        </tr></thead><tbody>
-            <tr class="instance-table__row--placeholder"><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
-        </tbody></table><div class="instance-table__hint">No sentiment readings yet • Data will appear when trading is active</div></div>`;
+        return `<div class="instance-table-wrap">
+            <table class="instance-table instance-table--scores"><thead><tr>
+                <th>Time</th><th>PA</th><th>KL</th><th>MOM</th><th>VOL</th><th>STR</th><th>COMP</th><th>Bias</th>
+            </tr></thead><tbody>
+                <tr class="instance-table__row--placeholder"><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+            </tbody></table>
+            <div class="instance-table__hint">No sentiment readings yet (${this.currentSentimentTimeframe.toUpperCase()}) • Data will appear when trading is active</div>
+        </div>`;
     },
     
     renderTransitionsTableEmpty() {
@@ -514,7 +743,7 @@ const ApexInstanceBrowser = {
     
     formatSymbol(symbol) {
         if (!symbol) return '???';
-        return symbol.replace(/(\.sim)+$/gi, '') + '.sim';
+        return symbol.replace(/(\.sim)+$/gi, '') + '.SIM';
     },
     
     formatTimestamp(ts) {

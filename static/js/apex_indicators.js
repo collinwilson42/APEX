@@ -16,17 +16,17 @@ const ApexIndicators = {
     
     // Default indicator configurations
     defaults: {
-        ema9:      { enabled: false, color: '#4A9E9A', weight: 0.45, tf: '1m',   label: 'EMA 9' },
+        ema9:      { enabled: false, color: '#4A9E9A', weight: 0.45, tf: '15m',  label: 'EMA 9' },
         ema21:     { enabled: true,  color: '#5B8A8A', weight: 0.65, tf: 'both', label: 'EMA 21' },
-        ema50:     { enabled: true,  color: '#7AB5B0', weight: 0.75, tf: '15m',  label: 'EMA 50' },
-        ema200:    { enabled: true,  color: '#6B7280', weight: 0.90, tf: '15m',  label: 'EMA 200' },
+        ema50:     { enabled: true,  color: '#7AB5B0', weight: 0.75, tf: '1h',   label: 'EMA 50' },
+        ema200:    { enabled: true,  color: '#6B7280', weight: 0.90, tf: '1h',   label: 'EMA 200' },
         vwap:      { enabled: false, color: '#8B7EC8', weight: 0.85, tf: 'both', label: 'VWAP' },
         bbands:    { enabled: true,  color: '#4A7A9E', weight: 0.70, tf: 'both', label: 'Bollinger Bands', fill: 'rgba(74, 122, 158, 0.06)' },
-        keltner:   { enabled: false, color: '#5A6A9E', weight: 0.55, tf: '15m',  label: 'Keltner Channels' },
-        fibGolden: { enabled: true,  color: '#7EAE8B', weight: 0.95, tf: '15m',  label: 'Golden Zone', fill: 'rgba(126, 174, 139, 0.08)' },
-        fibLevels: { enabled: false, color: '#5B8A8A', weight: 0.60, tf: '15m',  label: 'Fib Levels' },
-        pivots:    { enabled: false, color: '#A89060', weight: 0.80, tf: '15m',  label: 'Pivot Points' },
-        athZone:   { enabled: false, color: '#7EAE8B', weight: 0.85, tf: '15m',  label: 'ATH Zone', fill: 'rgba(126, 174, 139, 0.06)' },
+        keltner:   { enabled: false, color: '#5A6A9E', weight: 0.55, tf: '1h',   label: 'Keltner Channels' },
+        fibGolden: { enabled: true,  color: '#7EAE8B', weight: 0.95, tf: '1h',   label: 'Golden Zone', fill: 'rgba(126, 174, 139, 0.08)' },
+        fibLevels: { enabled: false, color: '#5B8A8A', weight: 0.60, tf: '1h',   label: 'Fib Levels' },
+        pivots:    { enabled: false, color: '#A89060', weight: 0.80, tf: '1h',   label: 'Pivot Points' },
+        athZone:   { enabled: false, color: '#7EAE8B', weight: 0.85, tf: '1h',   label: 'ATH Zone', fill: 'rgba(126, 174, 139, 0.06)' },
     },
     
     // Bar count options
@@ -34,8 +34,8 @@ const ApexIndicators = {
     
     // Per-chart settings storage
     chartSettings: {
-        '1m':  { bars: 100, indicators: {} },
-        '15m': { bars: 100, indicators: {} }
+        '15m': { bars: 100, indicators: {} },
+        '1h':  { bars: 100, indicators: {} }
     },
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -47,9 +47,9 @@ const ApexIndicators = {
         
         if (saved) {
             this.chartSettings = saved;
-            console.log('[ApexIndicators] Loaded from localStorage - 1m bars:', this.chartSettings['1m'].bars, '15m bars:', this.chartSettings['15m'].bars);
+            console.log('[ApexIndicators] Loaded from localStorage - 15m bars:', this.chartSettings['15m'].bars, '1h bars:', this.chartSettings['1h'].bars);
         } else {
-            ['1m', '15m'].forEach(tf => {
+            ['15m', '1h'].forEach(tf => {
                 this.chartSettings[tf].indicators = JSON.parse(JSON.stringify(this.defaults));
                 Object.keys(this.chartSettings[tf].indicators).forEach(key => {
                     const ind = this.chartSettings[tf].indicators[key];
@@ -68,9 +68,9 @@ const ApexIndicators = {
             const data = localStorage.getItem(this.STORAGE_KEY);
             if (data) {
                 const parsed = JSON.parse(data);
-                if (parsed['1m'] && parsed['15m'] && 
-                    typeof parsed['1m'].bars === 'number' && parsed['1m'].indicators &&
-                    typeof parsed['15m'].bars === 'number' && parsed['15m'].indicators) {
+                if (parsed['15m'] && parsed['1h'] && 
+                    typeof parsed['15m'].bars === 'number' && parsed['15m'].indicators &&
+                    typeof parsed['1h'].bars === 'number' && parsed['1h'].indicators) {
                     return parsed;
                 }
             }
@@ -302,46 +302,46 @@ const ApexIndicators = {
         
         if (indicators.ema9?.enabled) {
             traces.push({ type: 'scatter', mode: 'lines', x, y: this.calculateEMA(data, 9),
-                name: 'EMA 9', line: { color: indicators.ema9.color, width: 1 }, hoverinfo: 'skip' });
+                name: 'EMA 9', line: { color: indicators.ema9.color, width: 1 }, hoverinfo: 'skip', connectgaps: true });
         }
         
         if (indicators.ema21?.enabled) {
             traces.push({ type: 'scatter', mode: 'lines', x, y: this.calculateEMA(data, 21),
-                name: 'EMA 21', line: { color: indicators.ema21.color, width: 1.5 }, hoverinfo: 'skip' });
+                name: 'EMA 21', line: { color: indicators.ema21.color, width: 1.5 }, hoverinfo: 'skip', connectgaps: true });
         }
         
         if (indicators.ema50?.enabled) {
             traces.push({ type: 'scatter', mode: 'lines', x, y: this.calculateEMA(data, 50),
-                name: 'EMA 50', line: { color: indicators.ema50.color, width: 1.5 }, hoverinfo: 'skip' });
+                name: 'EMA 50', line: { color: indicators.ema50.color, width: 1.5 }, hoverinfo: 'skip', connectgaps: true });
         }
         
         if (indicators.ema200?.enabled) {
             traces.push({ type: 'scatter', mode: 'lines', x, y: this.calculateEMA(data, 200),
-                name: 'EMA 200', line: { color: indicators.ema200.color, width: 2 }, hoverinfo: 'skip' });
+                name: 'EMA 200', line: { color: indicators.ema200.color, width: 2 }, hoverinfo: 'skip', connectgaps: true });
         }
         
         if (indicators.vwap?.enabled) {
             traces.push({ type: 'scatter', mode: 'lines', x, y: this.calculateVWAP(data),
-                name: 'VWAP', line: { color: indicators.vwap.color, width: 1.5, dash: 'dot' }, hoverinfo: 'skip' });
+                name: 'VWAP', line: { color: indicators.vwap.color, width: 1.5, dash: 'dot' }, hoverinfo: 'skip', connectgaps: true });
         }
         
         if (indicators.bbands?.enabled) {
             const bb = this.calculateBollingerBands(data, 20, 2);
             traces.push({ type: 'scatter', mode: 'lines', x, y: bb.upper,
-                name: 'BB Upper', line: { color: indicators.bbands.color, width: 1 }, hoverinfo: 'skip' });
+                name: 'BB Upper', line: { color: indicators.bbands.color, width: 1 }, hoverinfo: 'skip', connectgaps: true });
             traces.push({ type: 'scatter', mode: 'lines', x, y: bb.lower,
                 name: 'BB Lower', line: { color: indicators.bbands.color, width: 1 },
-                fill: 'tonexty', fillcolor: indicators.bbands.fill, hoverinfo: 'skip' });
+                fill: 'tonexty', fillcolor: indicators.bbands.fill, hoverinfo: 'skip', connectgaps: true });
             traces.push({ type: 'scatter', mode: 'lines', x, y: bb.middle,
-                name: 'BB Mid', line: { color: indicators.bbands.color, width: 1, dash: 'dot' }, hoverinfo: 'skip' });
+                name: 'BB Mid', line: { color: indicators.bbands.color, width: 1, dash: 'dot' }, hoverinfo: 'skip', connectgaps: true });
         }
         
         if (indicators.keltner?.enabled) {
             const kc = this.calculateKeltnerChannels(data, 20, 1.5);
             traces.push({ type: 'scatter', mode: 'lines', x, y: kc.upper,
-                name: 'KC Upper', line: { color: indicators.keltner.color, width: 1, dash: 'dash' }, hoverinfo: 'skip' });
+                name: 'KC Upper', line: { color: indicators.keltner.color, width: 1, dash: 'dash' }, hoverinfo: 'skip', connectgaps: true });
             traces.push({ type: 'scatter', mode: 'lines', x, y: kc.lower,
-                name: 'KC Lower', line: { color: indicators.keltner.color, width: 1, dash: 'dash' }, hoverinfo: 'skip' });
+                name: 'KC Lower', line: { color: indicators.keltner.color, width: 1, dash: 'dash' }, hoverinfo: 'skip', connectgaps: true });
         }
         
         if (indicators.fibGolden?.enabled) {

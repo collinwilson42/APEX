@@ -73,7 +73,7 @@ DB_PATH = SYMBOL_DATABASES[DEFAULT_SYMBOL]['db_path']
 # ============================================================================
 
 COLLECTOR_ENABLED = True
-COLLECTOR_TIMEFRAMES = ['1m', '15m']
+COLLECTOR_TIMEFRAMES = ['15m', '1h']  # Migration: Abandoned 1m for 1h (Seed 13)
 COLLECTOR_INTERVAL_SEC = 30  # How often to check for new bars
 
 # ============================================================================
