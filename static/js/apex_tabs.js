@@ -133,7 +133,7 @@ const ApexTabRenderer = {
                 </button>
                 <button class="dropdown-type dropdown-type--metatron" data-type="metatron">
                     <span class="dropdown-type__dot"></span>
-                    Metatron
+                    CYTOBASE
                 </button>
             </div>
             <div class="new-tab-dropdown__instances"></div>

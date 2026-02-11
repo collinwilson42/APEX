@@ -551,7 +551,10 @@ def tunity(): return render_template('tunity.html')
 @app.route('/fingerprint')
 def fingerprint(): return render_template('fingerprint_medium.html')
 @app.route('/metatron')
-def metatron(): return send_from_directory('templates', 'metatron_radial.html')
+def metatron(): return send_from_directory('templates', 'cytobase.html')
+
+@app.route('/cytobase')
+def cytobase(): return send_from_directory('templates', 'cytobase.html')
 
 
 # ============================================================================

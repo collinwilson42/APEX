@@ -151,11 +151,31 @@ const ApexViewRenderer = {
     
     renderMetatronView(tab) {
         this.cleanup();
-        this.viewPanel.innerHTML = `<iframe src="/metatron" style="width: 100%; height: 100%; border: none; background: #0a0b0d;" title="Metatron"></iframe>`;
-        this.controlBody.innerHTML = `<div class="metatron-control-info"><div class="metatron-control-info__header"><span style="color: #C084FC;">◉</span> METATRON RADIAL DATABASE</div></div>`;
+        // CytoBase is full-screen with its own control panel — hide Apex control center entirely
+        this.viewPanel.innerHTML = `<iframe src="/cytobase" style="width: 100%; height: 100%; border: none; background: #0a0b0d;" title="CytoBase"></iframe>`;
+        this.controlBody.innerHTML = '';
+        
+        // Hide the Apex control center + divider so CytoBase iframe fills full height
+        const controlCenter = document.getElementById('apex-control-center');
+        const divider = document.getElementById('apex-divider');
+        const viewPanel = document.getElementById('apex-view-panel');
+        if (controlCenter) controlCenter.style.display = 'none';
+        if (divider) divider.style.display = 'none';
+        if (viewPanel) viewPanel.style.flex = '1';
     },
     
+    restoreApexLayout() {
+        // Restore Apex control center + divider when leaving CytoBase
+        const controlCenter = document.getElementById('apex-control-center');
+        const divider = document.getElementById('apex-divider');
+        const viewPanel = document.getElementById('apex-view-panel');
+        if (controlCenter) controlCenter.style.display = '';
+        if (divider) divider.style.display = '';
+        if (viewPanel) viewPanel.style.flex = '';
+    },
+
     renderEmptyState() {
+        this.restoreApexLayout();
         this.viewPanel.innerHTML = `<div class="view-panel__placeholder"><div class="view-panel__placeholder-icon">◎</div><div class="view-panel__placeholder-text">Select a symbol database to view</div></div>`;
         this.controlBody.innerHTML = `<div class="control-center__placeholder">Click the APEX logo to open a database or trading view</div>`;
         this.cleanup();
@@ -166,6 +186,7 @@ const ApexViewRenderer = {
        ═══════════════════════════════════════════════════════════════════════ */
     async renderDatabaseView(tab) {
         this.cleanup();
+        this.restoreApexLayout();
         const symbolKey = tab.dbKey || tab.instanceId || this.activeSymbol;
         this.activeSymbol = symbolKey;
         
@@ -425,6 +446,7 @@ const ApexViewRenderer = {
        TRADING VIEW - RELATIVITY TRADING + PROFILE CONTROLLER
        ═══════════════════════════════════════════════════════════════════════ */
     renderTradingView(tab) {
+        this.restoreApexLayout();
         let tabSymbol = tab.dbKey || this.activeSymbol;
         if (tabSymbol.startsWith('tr_')) tabSymbol = tab.symbol || tab.dbSymbol || this.activeSymbol;
         if (tabSymbol && !tabSymbol.startsWith('tr_')) tabSymbol = tabSymbol.toUpperCase();
