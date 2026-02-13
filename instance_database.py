@@ -50,16 +50,23 @@ class Profile:
     symbol: str
     status: str = "ACTIVE"  # ACTIVE | PAUSED | ARCHIVED
     
-    # Sentiment config
-    sentiment_weights: str = '{"price_action": 0.20, "key_levels": 0.20, "momentum": 0.20, "volume": 0.20, "structure": 0.20}'
+    # Provider config
+    provider: str = "anthropic"  # anthropic | google | openai
+    image_path: Optional[str] = None
+    
+    # Trading Config — single JSON blob (source of truth for torra_trader)
+    trading_config: Optional[str] = None
+    
+    # Sentiment config (decomposed from trading_config for backward compat)
+    sentiment_weights: str = '{"price_action": 0.30, "key_levels": 0.15, "momentum": 0.25, "ath": 0.10, "structure": 0.20}'
     sentiment_model: str = "claude-sonnet-4-20250514"
-    sentiment_threshold: float = 0.3
+    sentiment_threshold: float = 0.55
     
     # Position config
-    position_sizing: str = '{"base_lots": 0.1, "max_lots": 1.0}'
-    risk_config: str = '{"max_drawdown_pct": 5.0, "daily_loss_limit": 500}'
-    entry_rules: str = '{}'
-    exit_rules: str = '{}'
+    position_sizing: str = '{"base_lots": 1.0, "max_lots": 1.0}'
+    risk_config: str = '{"max_drawdown_pct": 5.0, "daily_loss_limit": 500, "stop_loss_points": 80, "take_profit_points": 200, "max_signals_per_hour": 3, "cooldown_seconds": 300, "consecutive_loss_halt": 2, "sentiment_exit": true}'
+    entry_rules: str = '{"timeframe_weights": {"15m": 0.40, "1h": 0.60}, "gut_check_veto_threshold": 0.30, "dead_zone_low": -0.25, "dead_zone_high": 0.25}'
+    exit_rules: str = '{"stop_loss_points": 80, "take_profit_points": 200, "sentiment_exit_enabled": true, "max_signals_per_hour": 3, "cooldown_seconds": 300, "consecutive_loss_halt": 2}'
     
     # Pyramid config
     pyramid_enabled: int = 1
@@ -69,9 +76,13 @@ class Profile:
     # Analytics
     total_trades: int = 0
     total_pnl: float = 0.0
+    total_lots: float = 0.0
     win_rate: float = 0.0
     profit_factor: float = 0.0
     sharpe_ratio: float = 0.0
+    avg_latency: float = 0.0
+    total_api_calls: int = 0
+    last_used_at: Optional[str] = None
     
     created_at: str = ""
     updated_at: str = ""
@@ -153,44 +164,38 @@ CREATE TABLE IF NOT EXISTS sentiment_{instance_id} (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     profile_id TEXT,
     symbol TEXT NOT NULL,
-    timeframe TEXT NOT NULL,  -- 1m | 15m
+    timeframe TEXT NOT NULL,  -- 15m | 1h
     timestamp TEXT NOT NULL,
     
-    -- Category 1: Price Action
-    price_action_text TEXT,
-    price_action_score REAL,  -- -1.0 to +1.0
+    -- The 5 Vectors (raw -1.0 to +1.0)  [Seed 18: ATH replaces Volume]
+    price_action_score REAL,
+    key_levels_score REAL,
+    momentum_score REAL,
+    ath_score REAL,           -- Percentile-based, deterministic (replaces volume)
+    structure_score REAL,
     
-    -- Category 2: Key Levels
-    key_levels_text TEXT,
-    key_levels_score REAL,  -- -1.0 to +1.0
+    -- Profile-Weighted Composite
+    composite_score REAL,     -- (PA*w1 + KL*w2 + MOM*w3 + ATH*w4 + STR*w5)
     
-    -- Category 3: Momentum
-    momentum_text TEXT,
-    momentum_score REAL,  -- -1.0 to +1.0
+    -- Cross-Timeframe Consensus  [Seed 18: DB is the brain]
+    consensus_score REAL,     -- (composite_own * tw_own) + (partner_composite * tw_partner)
+    partner_composite REAL,   -- The other timeframe's composite at time of blending
     
-    -- Category 4: Volume
-    volume_text TEXT,
-    volume_score REAL,  -- -1.0 to +1.0
+    -- Trade Decision (what the trader reads)
+    matrix_bias INTEGER,      -- -2, -1, 0, +1, +2
+    matrix_bias_label TEXT,   -- Strong Bearish -> Strong Bullish
+    meets_threshold INTEGER DEFAULT 0,  -- 0 or 1
+    signal_direction TEXT DEFAULT 'HOLD',  -- BUY | SELL | HOLD
     
-    -- Category 5: Structure
-    structure_text TEXT,
-    structure_score REAL,  -- -1.0 to +1.0
-    
-    -- Composite
-    summary TEXT,
-    composite_score REAL,
-    matrix_bias INTEGER,  -- -2, -1, 0, +1, +2
-    matrix_bias_label TEXT,  -- Strong Bearish, Bearish, Neutral, Bullish, Strong Bullish
+    -- Reproducibility
+    weights_snapshot TEXT,    -- JSON: frozen profile weights + thresholds at calc time
     
     -- Source
-    source_model TEXT,  -- claude-opus-4, claude-sonnet-4, gemini-2.0-flash
-    source_type TEXT,  -- API | MOCK | MANUAL
-    raw_response TEXT,
+    source_model TEXT,
+    source_type TEXT,         -- API | MOCK | MANUAL
     processing_time_ms INTEGER,
-    tokens_used INTEGER,
     
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 )
 """
 
@@ -218,7 +223,7 @@ CREATE TABLE IF NOT EXISTS state_transitions_{instance_id} (
     price_action_score REAL,
     key_levels_score REAL,
     momentum_score REAL,
-    volume_score REAL,
+    ath_score REAL,           -- Seed 18: replaces volume_score
     structure_score REAL,
     
     -- Market Context
@@ -264,10 +269,17 @@ CREATE TABLE IF NOT EXISTS profiles (
     symbol TEXT NOT NULL,
     status TEXT DEFAULT 'ACTIVE',
     
-    -- Sentiment Config
+    -- Provider Config
+    provider TEXT DEFAULT 'anthropic',
+    image_path TEXT,
+    
+    -- Trading Config (single JSON blob — source of truth)
+    trading_config TEXT,
+    
+    -- Sentiment Config (decomposed for backward compat)
     sentiment_weights TEXT,
     sentiment_model TEXT,
-    sentiment_threshold REAL DEFAULT 0.3,
+    sentiment_threshold REAL DEFAULT 0.55,
     
     -- Position Config
     position_sizing TEXT,
@@ -283,9 +295,13 @@ CREATE TABLE IF NOT EXISTS profiles (
     -- Analytics
     total_trades INTEGER DEFAULT 0,
     total_pnl REAL DEFAULT 0,
+    total_lots REAL DEFAULT 0,
     win_rate REAL DEFAULT 0,
     profit_factor REAL DEFAULT 0,
     sharpe_ratio REAL DEFAULT 0,
+    avg_latency REAL DEFAULT 0,
+    total_api_calls INTEGER DEFAULT 0,
+    last_used_at TEXT,
     
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -440,6 +456,21 @@ class InstanceDatabaseManager:
         cursor.execute(BROKER_POSITIONS_TABLE_SCHEMA)
         cursor.execute(BROKER_TRADES_TABLE_SCHEMA)
         
+        # Migrate: add new columns to profiles if they don't exist yet
+        self._migrate_profiles_table(cursor)
+        
+        conn.commit()
+        conn.close()
+        
+        # Ensure every asset has at least one default profile
+        self.ensure_default_profiles()
+        # Backfill any profiles with NULL/stale trading_config
+        self._backfill_trading_config(cursor=None)
+        
+        # Re-open for indexes
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
         # Create indexes
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_instances_symbol 
@@ -467,6 +498,174 @@ class InstanceDatabaseManager:
         conn.commit()
         conn.close()
     
+    def _migrate_profiles_table(self, cursor):
+        """Add columns to profiles table that may not exist in older databases"""
+        # Get existing columns
+        cursor.execute("PRAGMA table_info(profiles)")
+        existing = {row[1] for row in cursor.fetchall()}
+        
+        migrations = [
+            ('provider', "TEXT DEFAULT 'anthropic'"),
+            ('image_path', 'TEXT'),
+            ('trading_config', 'TEXT'),
+            ('total_lots', 'REAL DEFAULT 0'),
+            ('avg_latency', 'REAL DEFAULT 0'),
+            ('total_api_calls', 'INTEGER DEFAULT 0'),
+            ('last_used_at', 'TEXT'),
+        ]
+        
+        for col_name, col_def in migrations:
+            if col_name not in existing:
+                try:
+                    cursor.execute(f"ALTER TABLE profiles ADD COLUMN {col_name} {col_def}")
+                    print(f"  ✓ Migrated profiles table: added '{col_name}'")
+                except Exception as e:
+                    pass  # Column may already exist in race condition
+    
+    # Default trading config — applied to every new profile
+    DEFAULT_TRADING_CONFIG = {
+        "sentiment_weights": {
+            "price_action": 0.12,
+            "key_levels":   0.16,
+            "momentum":     0.28,
+            "ath":          0.10,
+            "structure":    0.34
+        },
+        "timeframe_weights": {
+            "15m": 0.40,
+            "1h":  0.60
+        },
+        "thresholds": {
+            "buy":       0.55,
+            "sell":     -0.55,
+            "dead_zone": 0.25,
+            "gut_veto":  0.30
+        },
+        "risk": {
+            "base_lots":             1.0,
+            "max_lots":              1.0,
+            "stop_loss_points":      80,
+            "take_profit_points":    200,
+            "max_signals_per_hour":  3,
+            "cooldown_seconds":      300,
+            "consecutive_loss_halt": 2,
+            "sentiment_exit":        True
+        }
+    }
+
+    # Asset display names for default profile naming
+    ASSET_NAMES = {
+        'XAUJ26': 'Gold', 'US100H26': 'US100', 'US30H26': 'US30',
+        'US500H26': 'US500', 'BTCF26': 'BTC', 'USOILH26': 'Oil',
+        'GOLD': 'Gold', 'US100': 'US100', 'US30': 'US30',
+        'US500': 'US500', 'BTC': 'BTC', 'OIL': 'Oil',
+    }
+
+    def ensure_default_profiles(self):
+        """
+        Create a default trading profile for each asset if none exists.
+        Called on startup to ensure every asset has at least one profile.
+        """
+        try:
+            from config import SYMBOL_DATABASES
+            symbols = list(SYMBOL_DATABASES.keys())  # Use clean keys like XAUJ26, not XAUJ26.sim
+        except ImportError:
+            symbols = ['XAUJ26', 'US100H26', 'US30H26', 'US500H26', 'BTCF26', 'USOILH26']
+
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        for symbol in symbols:
+            cursor.execute(
+                "SELECT COUNT(*) FROM profiles WHERE symbol = ? AND status != 'ARCHIVED'",
+                (symbol,)
+            )
+            count = cursor.fetchone()[0]
+
+            if count == 0:
+                tc = self.DEFAULT_TRADING_CONFIG
+                profile_id = str(uuid.uuid4())[:12]
+                now = datetime.utcnow().isoformat() + "Z"
+                asset_name = self.ASSET_NAMES.get(symbol, symbol)
+
+                sw = tc['sentiment_weights']
+                th = tc['thresholds']
+                risk = tc['risk']
+                tw = tc['timeframe_weights']
+
+                cursor.execute("""
+                    INSERT INTO profiles (
+                        id, name, symbol, status, provider,
+                        trading_config,
+                        sentiment_weights, sentiment_model, sentiment_threshold,
+                        position_sizing, risk_config, entry_rules, exit_rules,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, 'ACTIVE', 'anthropic', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    profile_id,
+                    f"{asset_name} Default",
+                    symbol,
+                    json.dumps(tc),
+                    json.dumps(sw),
+                    'claude-sonnet-4-20250514',
+                    abs(th.get('buy', 0.55)),
+                    json.dumps({'base_lots': risk['base_lots'], 'max_lots': risk['max_lots']}),
+                    json.dumps(risk),
+                    json.dumps({'timeframe_weights': tw, 'gut_check_veto_threshold': th['gut_veto'],
+                                'dead_zone_low': -th['dead_zone'], 'dead_zone_high': th['dead_zone']}),
+                    json.dumps({'stop_loss_points': risk['stop_loss_points'],
+                                'take_profit_points': risk['take_profit_points'],
+                                'sentiment_exit_enabled': risk['sentiment_exit'],
+                                'max_signals_per_hour': risk['max_signals_per_hour'],
+                                'cooldown_seconds': risk['cooldown_seconds'],
+                                'consecutive_loss_halt': risk['consecutive_loss_halt']}),
+                    now, now
+                ))
+                print(f"  \u2713 Created default profile for {asset_name} ({symbol}) → {profile_id}")
+
+        conn.commit()
+        conn.close()
+
+    def _backfill_trading_config(self, cursor=None):
+        """
+        Backfill any profiles whose trading_config is NULL or contains
+        stale keys (e.g. maxTokens, temperature, schedule) with the
+        correct DEFAULT_TRADING_CONFIG.
+        """
+        conn = self._get_conn()
+        cur = conn.cursor()
+        default_json = json.dumps(self.DEFAULT_TRADING_CONFIG)
+
+        # Find profiles with NULL or old-format trading_config
+        cur.execute("SELECT id, trading_config FROM profiles")
+        rows = cur.fetchall()
+        updated = 0
+        for row in rows:
+            tc = row['trading_config']
+            needs_update = False
+            if tc is None:
+                needs_update = True
+            else:
+                try:
+                    parsed = json.loads(tc)
+                    # Old format detection: has maxTokens/temperature/schedule but no sentiment_weights
+                    if 'sentiment_weights' not in parsed:
+                        needs_update = True
+                except (json.JSONDecodeError, TypeError):
+                    needs_update = True
+
+            if needs_update:
+                cur.execute(
+                    "UPDATE profiles SET trading_config = ?, updated_at = ? WHERE id = ?",
+                    (default_json, datetime.utcnow().isoformat() + 'Z', row['id'])
+                )
+                updated += 1
+
+        if updated:
+            conn.commit()
+            print(f"  ✓ Backfilled trading_config for {updated} profile(s)")
+        conn.close()
+
     def _sanitize_instance_id(self, instance_id: str) -> str:
         """Sanitize instance ID for use in table names"""
         return instance_id.replace("-", "_").replace(".", "_").lower()
@@ -731,7 +930,7 @@ class InstanceDatabaseManager:
     
     def create_profile(self, name: str, symbol: str, **kwargs) -> Profile:
         """Create a new trading profile"""
-        profile_id = str(uuid.uuid4())[:12]
+        profile_id = kwargs.pop('id', None) or str(uuid.uuid4())[:12]
         
         profile = Profile(
             id=profile_id,
@@ -745,14 +944,17 @@ class InstanceDatabaseManager:
         
         cursor.execute("""
             INSERT INTO profiles (
-                id, name, symbol, status,
+                id, name, symbol, status, provider, image_path,
+                trading_config,
                 sentiment_weights, sentiment_model, sentiment_threshold,
                 position_sizing, risk_config, entry_rules, exit_rules,
                 pyramid_enabled, pyramid_max_levels, pyramid_config,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             profile.id, profile.name, profile.symbol, profile.status,
+            profile.provider, profile.image_path,
+            profile.trading_config,
             profile.sentiment_weights, profile.sentiment_model, profile.sentiment_threshold,
             profile.position_sizing, profile.risk_config, profile.entry_rules, profile.exit_rules,
             profile.pyramid_enabled, profile.pyramid_max_levels, profile.pyramid_config,
@@ -764,8 +966,83 @@ class InstanceDatabaseManager:
         
         return profile
     
+    def get_all_profiles(self) -> List[Profile]:
+        """Get all non-archived profiles"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT * FROM profiles 
+            WHERE status != 'ARCHIVED'
+            ORDER BY total_pnl DESC, created_at DESC
+        """)
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [self._row_to_profile(row) for row in rows]
+    
+    def get_profile(self, profile_id: str) -> Optional[Profile]:
+        """Get a single profile by ID"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM profiles WHERE id = ?", (profile_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if not row:
+            return None
+        return self._row_to_profile(row)
+    
+    def update_profile(self, profile_id: str, updates: dict) -> Optional[Profile]:
+        """Update a profile with the given fields"""
+        # Only allow updating known columns
+        allowed = {
+            'name', 'symbol', 'status', 'provider', 'image_path',
+            'trading_config',
+            'sentiment_weights', 'sentiment_model', 'sentiment_threshold',
+            'position_sizing', 'risk_config', 'entry_rules', 'exit_rules',
+            'pyramid_enabled', 'pyramid_max_levels', 'pyramid_config',
+            'total_trades', 'total_pnl', 'total_lots', 'win_rate',
+            'profit_factor', 'sharpe_ratio', 'avg_latency', 'total_api_calls',
+            'last_used_at', 'last_signal_at'
+        }
+        
+        filtered = {k: v for k, v in updates.items() if k in allowed}
+        if not filtered:
+            return self.get_profile(profile_id)
+        
+        filtered['updated_at'] = datetime.utcnow().isoformat() + "Z"
+        
+        set_clause = ', '.join(f'{k} = ?' for k in filtered.keys())
+        values = list(filtered.values()) + [profile_id]
+        
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute(f"UPDATE profiles SET {set_clause} WHERE id = ?", values)
+        conn.commit()
+        conn.close()
+        
+        return self.get_profile(profile_id)
+    
+    def delete_profile(self, profile_id: str) -> bool:
+        """Delete a profile (hard delete). Unlinks any instances first."""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        # Unlink any instances pointing to this profile
+        cursor.execute(
+            "UPDATE algorithm_instances SET profile_id = NULL WHERE profile_id = ?",
+            (profile_id,)
+        )
+        cursor.execute("DELETE FROM profiles WHERE id = ?", (profile_id,))
+        deleted = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return deleted
+    
     def get_profiles_by_symbol(self, symbol: str) -> List[Profile]:
-        """Get all profiles for a symbol"""
+        """Get all profiles for a symbol (asset-scoped)"""
         conn = self._get_conn()
         cursor = conn.cursor()
         
@@ -781,11 +1058,22 @@ class InstanceDatabaseManager:
         return [self._row_to_profile(row) for row in rows]
     
     def _row_to_profile(self, row) -> Profile:
+        """Convert a DB row to a Profile dataclass, handling missing columns gracefully"""
+        def _get(key, default=None):
+            try:
+                val = row[key]
+                return val if val is not None else default
+            except (IndexError, KeyError):
+                return default
+        
         return Profile(
             id=row["id"],
             name=row["name"],
             symbol=row["symbol"],
             status=row["status"],
+            provider=_get("provider", "anthropic"),
+            image_path=_get("image_path"),
+            trading_config=_get("trading_config"),
             sentiment_weights=row["sentiment_weights"],
             sentiment_model=row["sentiment_model"],
             sentiment_threshold=row["sentiment_threshold"],
@@ -796,75 +1084,175 @@ class InstanceDatabaseManager:
             pyramid_enabled=row["pyramid_enabled"],
             pyramid_max_levels=row["pyramid_max_levels"],
             pyramid_config=row["pyramid_config"],
-            total_trades=row["total_trades"],
-            total_pnl=row["total_pnl"],
-            win_rate=row["win_rate"],
-            profit_factor=row["profit_factor"],
-            sharpe_ratio=row["sharpe_ratio"],
+            total_trades=_get("total_trades", 0),
+            total_pnl=_get("total_pnl", 0.0),
+            total_lots=_get("total_lots", 0.0),
+            win_rate=_get("win_rate", 0.0),
+            profit_factor=_get("profit_factor", 0.0),
+            sharpe_ratio=_get("sharpe_ratio", 0.0),
+            avg_latency=_get("avg_latency", 0.0),
+            total_api_calls=_get("total_api_calls", 0),
+            last_used_at=_get("last_used_at"),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
-            last_signal_at=row["last_signal_at"]
+            last_signal_at=_get("last_signal_at")
         )
     
     # ═══════════════════════════════════════════════════════════════════════
     # SENTIMENT OPERATIONS
     # ═══════════════════════════════════════════════════════════════════════
     
-    def save_sentiment(self, instance_id: str, sentiment_data: dict) -> int:
-        """Save a sentiment reading to the instance's table"""
-        safe_id = self._sanitize_instance_id(instance_id)
+    def save_sentiment(self, instance_id: str, sentiment_data: dict,
+                       profile: 'Profile' = None) -> int:
+        """
+        Seed 18: The Sentient Ledger — DB is the brain.
         
-        # Calculate matrix bias from composite score
-        composite = sentiment_data.get("composite_score", 0)
-        matrix_bias = self._score_to_bias(composite)
-        bias_label = self.BIAS_LABELS.get(matrix_bias, "Neutral")
+        Saves a sentiment reading with full scoring pipeline:
+        1. Apply profile weights → composite_score
+        2. Grab partner timeframe → consensus_score
+        3. Check thresholds → meets_threshold + signal_direction
+        4. Freeze weights_snapshot for reproducibility
+        
+        The trader just reads the verdict — no internal scoring needed.
+        
+        Args:
+            instance_id: Instance to save to
+            sentiment_data: Dict with raw scores (price_action_score, key_levels_score,
+                           momentum_score, ath_score, structure_score) plus meta fields
+            profile: Optional Profile object. If None, loads from instance's linked profile.
+        """
+        safe_id = self._sanitize_instance_id(instance_id)
+        profile_id = sentiment_data.get("profile_id")
+        timeframe = sentiment_data.get("timeframe", "15m")
+        
+        # ── Load profile config ──
+        if profile is None and profile_id:
+            profile = self.get_profile(profile_id)
+        if profile is None:
+            # Fallback: try to get profile from instance record
+            instance = self.get_instance(instance_id)
+            if instance and instance.profile_id:
+                profile = self.get_profile(instance.profile_id)
+                profile_id = instance.profile_id
+        
+        # ── Parse profile weights (or use defaults) ──
+        if profile and profile.trading_config:
+            try:
+                tc = json.loads(profile.trading_config) if isinstance(profile.trading_config, str) else profile.trading_config
+            except (json.JSONDecodeError, TypeError):
+                tc = self.DEFAULT_TRADING_CONFIG
+        else:
+            tc = self.DEFAULT_TRADING_CONFIG
+        
+        sw = tc.get("sentiment_weights", self.DEFAULT_TRADING_CONFIG["sentiment_weights"])
+        tw = tc.get("timeframe_weights", self.DEFAULT_TRADING_CONFIG["timeframe_weights"])
+        thresholds = tc.get("thresholds", self.DEFAULT_TRADING_CONFIG["thresholds"])
+        
+        # ── Extract raw scores ──
+        pa  = float(sentiment_data.get("price_action_score", 0) or 0)
+        kl  = float(sentiment_data.get("key_levels_score", 0) or 0)
+        mom = float(sentiment_data.get("momentum_score", 0) or 0)
+        ath = float(sentiment_data.get("ath_score", 0) or 0)
+        stru = float(sentiment_data.get("structure_score", 0) or 0)
+        
+        # ── Step 1: Apply profile weights → composite ──
+        w_pa  = float(sw.get("price_action", 0.30))
+        w_kl  = float(sw.get("key_levels", 0.15))
+        w_mom = float(sw.get("momentum", 0.25))
+        w_ath = float(sw.get("ath", sw.get("volume", 0.10)))  # backward compat
+        w_str = float(sw.get("structure", 0.20))
+        
+        composite = (pa * w_pa) + (kl * w_kl) + (mom * w_mom) + (ath * w_ath) + (stru * w_str)
+        composite = round(composite, 4)
+        
+        # ── Step 2: Cross-timeframe consensus ──
+        partner_tf = "1h" if timeframe == "15m" else "15m"
+        own_weight = float(tw.get(timeframe, 0.40 if timeframe == "15m" else 0.60))
+        partner_weight = float(tw.get(partner_tf, 0.60 if timeframe == "15m" else 0.40))
+        
+        # Get partner's latest composite
+        partner_composite = None
+        consensus = composite  # Default: just own composite if no partner data
         
         conn = self._get_conn()
         cursor = conn.cursor()
         
+        try:
+            cursor.execute(f"""
+                SELECT composite_score FROM sentiment_{safe_id}
+                WHERE timeframe = ?
+                ORDER BY timestamp DESC LIMIT 1
+            """, (partner_tf,))
+            partner_row = cursor.fetchone()
+            if partner_row and partner_row["composite_score"] is not None:
+                partner_composite = float(partner_row["composite_score"])
+                consensus = (composite * own_weight) + (partner_composite * partner_weight)
+                consensus = round(consensus, 4)
+        except Exception:
+            pass  # Table may not exist yet or be empty
+        
+        # ── Step 3: Threshold check → trade signal ──
+        buy_threshold = float(thresholds.get("buy", 0.55))
+        sell_threshold = float(thresholds.get("sell", -0.55))
+        
+        meets_threshold = 0
+        signal_direction = "HOLD"
+        
+        if consensus >= buy_threshold:
+            meets_threshold = 1
+            signal_direction = "BUY"
+        elif consensus <= sell_threshold:
+            meets_threshold = 1
+            signal_direction = "SELL"
+        
+        # ── Matrix bias from consensus (not raw composite) ──
+        matrix_bias = self._score_to_bias(consensus)
+        bias_label = self.BIAS_LABELS.get(matrix_bias, "Neutral")
+        
+        # ── Freeze weights snapshot for reproducibility ──
+        weights_snapshot = json.dumps({
+            "sentiment_weights": {"price_action": w_pa, "key_levels": w_kl,
+                                  "momentum": w_mom, "ath": w_ath, "structure": w_str},
+            "timeframe_weights": tw,
+            "thresholds": thresholds,
+            "profile_id": profile_id,
+            "profile_name": profile.name if profile else None
+        })
+        
+        # ── Insert ──
         cursor.execute(f"""
             INSERT INTO sentiment_{safe_id} (
                 profile_id, symbol, timeframe, timestamp,
-                price_action_text, price_action_score,
-                key_levels_text, key_levels_score,
-                momentum_text, momentum_score,
-                volume_text, volume_score,
-                structure_text, structure_score,
-                summary, composite_score, matrix_bias, matrix_bias_label,
-                source_model, source_type, raw_response, processing_time_ms, tokens_used
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                price_action_score, key_levels_score, momentum_score,
+                ath_score, structure_score,
+                composite_score, consensus_score, partner_composite,
+                matrix_bias, matrix_bias_label, meets_threshold, signal_direction,
+                weights_snapshot,
+                source_model, source_type, processing_time_ms
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            sentiment_data.get("profile_id"),
+            profile_id,
             sentiment_data.get("symbol"),
-            sentiment_data.get("timeframe"),
+            timeframe,
             sentiment_data.get("timestamp"),
-            sentiment_data.get("price_action_text"),
-            sentiment_data.get("price_action_score"),
-            sentiment_data.get("key_levels_text"),
-            sentiment_data.get("key_levels_score"),
-            sentiment_data.get("momentum_text"),
-            sentiment_data.get("momentum_score"),
-            sentiment_data.get("volume_text"),
-            sentiment_data.get("volume_score"),
-            sentiment_data.get("structure_text"),
-            sentiment_data.get("structure_score"),
-            sentiment_data.get("summary"),
-            composite,
-            matrix_bias,
-            bias_label,
+            pa, kl, mom, ath, stru,
+            composite, consensus, partner_composite,
+            matrix_bias, bias_label, meets_threshold, signal_direction,
+            weights_snapshot,
             sentiment_data.get("source_model"),
             sentiment_data.get("source_type"),
-            sentiment_data.get("raw_response"),
-            sentiment_data.get("processing_time_ms"),
-            sentiment_data.get("tokens_used")
+            sentiment_data.get("processing_time_ms")
         ))
         
         reading_id = cursor.lastrowid
         conn.commit()
         conn.close()
         
-        # Check for state transition
+        # Check for Markov state transition
+        sentiment_data["composite_score"] = composite
         self._check_state_transition(instance_id, sentiment_data, matrix_bias)
+        
+        print(f"[SentimentDB] {timeframe} | composite={composite:+.3f} consensus={consensus:+.3f} | {signal_direction} {'✓' if meets_threshold else '·'}")
         
         return reading_id
     
@@ -948,7 +1336,7 @@ class InstanceDatabaseManager:
                     from_state, to_state, from_state_label, to_state_label,
                     trigger_source, trigger_data, composite_score,
                     price_action_score, key_levels_score, momentum_score,
-                    volume_score, structure_score
+                    ath_score, structure_score
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 sentiment_data.get("profile_id"),
@@ -965,7 +1353,7 @@ class InstanceDatabaseManager:
                 sentiment_data.get("price_action_score"),
                 sentiment_data.get("key_levels_score"),
                 sentiment_data.get("momentum_score"),
-                sentiment_data.get("volume_score"),
+                sentiment_data.get("ath_score"),
                 sentiment_data.get("structure_score")
             ))
             

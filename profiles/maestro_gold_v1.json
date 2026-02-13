@@ -1,0 +1,64 @@
+{
+  "_README": "This is an IMPORT TEMPLATE. The real profile lives in apex_instances.db profiles table. Use this to create/update profiles via the Profile Manager UI or direct DB insert.",
+
+  "meta": {
+    "name": "Maestro Gold V1 – First Run",
+    "version": "1.0.0",
+    "symbol": "XAUJ26",
+    "description": "Conservative gold futures profile for TORRA first run."
+  },
+
+  "sentiment_weights": {
+    "price_action": 0.30,
+    "key_levels":   0.15,
+    "momentum":     0.25,
+    "volume":       0.10,
+    "structure":    0.20
+  },
+  "_sentiment_weights_note": "Must sum to 1.0. Maps to: price_action_score, key_levels_score, momentum_score, volume_score, structure_score in sentiment table.",
+
+  "sentiment_model": "claude-sonnet-4-20250514",
+  "sentiment_threshold": 0.55,
+  "_threshold_note": "BUY if composite >= +threshold, SELL if composite <= -threshold. Dead zone: abs < 0.25 always HOLD.",
+
+  "position_sizing": {
+    "base_lots": 1.0,
+    "max_lots":  1.0
+  },
+
+  "risk_config": {
+    "max_drawdown_pct": 5.0,
+    "daily_loss_limit": 300,
+    "consecutive_loss_halt": 2,
+    "max_signals_per_hour": 3,
+    "cooldown_seconds": 300
+  },
+
+  "entry_rules": {
+    "timeframe_weights": {
+      "15m": 0.40,
+      "1h":  0.60
+    },
+    "_note": "1h has higher weight — it sets the trend direction. 15m provides entry timing.",
+    "gut_check_veto_threshold": 0.30,
+    "dead_zone_low": -0.25,
+    "dead_zone_high": 0.25
+  },
+
+  "exit_rules": {
+    "stop_loss_points": 80,
+    "take_profit_points": 200,
+    "trailing_stop_enabled": false,
+    "trailing_activation_points": 50,
+    "trailing_distance_points": 25,
+    "sentiment_exit_enabled": true,
+    "sentiment_exit_trigger": "reversal_flip"
+  },
+
+  "pyramid_enabled": 0,
+  "pyramid_max_levels": 1,
+  "pyramid_config": {
+    "add_threshold": 0.80,
+    "lot_scaling": [1]
+  }
+}

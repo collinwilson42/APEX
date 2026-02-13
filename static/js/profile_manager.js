@@ -66,36 +66,51 @@ const ProfileManager = {
     
     init() {
         this.loadProfiles();
-        this.render();
-        console.log('[ProfileManager] V2 Initialized with', this.profiles.length, 'profiles');
+        console.log('[ProfileManager] V2 Initialized (DB-backed)');
     },
     
-    loadProfiles() {
+    async loadProfiles() {
         try {
-            const stored = localStorage.getItem('apex_profiles_v2');
-            this.profiles = stored ? JSON.parse(stored) : [];
+            const response = await fetch('/api/profile/list');
+            const result = await response.json();
+            
+            if (result.success) {
+                this.profiles = result.profiles.map(p => {
+                    // Merge API key from localStorage (never stored in DB)
+                    const localKey = localStorage.getItem(`apex_apikey_${p.id}`) || '';
+                    return { ...p, apiKey: localKey };
+                });
+            } else {
+                console.error('[ProfileManager] Failed to load from DB:', result.error);
+                this.profiles = [];
+            }
             
             const activeId = localStorage.getItem('apex_active_profile');
             if (activeId && this.profiles.find(p => p.id === activeId)) {
                 this.activeProfileId = activeId;
+                const active = this.profiles.find(p => p.id === activeId);
+                if (active) active.status = 'active';
             }
             
-            // Sort by North Star score
             this.sortProfilesByNorthStar();
+            this.render();
         } catch (e) {
             console.error('[ProfileManager] Failed to load profiles:', e);
             this.profiles = [];
+            this.render();
         }
     },
     
-    saveProfiles() {
-        try {
-            localStorage.setItem('apex_profiles_v2', JSON.stringify(this.profiles));
-            if (this.activeProfileId) {
-                localStorage.setItem('apex_active_profile', this.activeProfileId);
-            }
-        } catch (e) {
-            console.error('[ProfileManager] Failed to save profiles:', e);
+    saveApiKeyLocally(profileId, apiKey) {
+        /* API keys stay in localStorage only — never sent to DB */
+        if (apiKey) {
+            localStorage.setItem(`apex_apikey_${profileId}`, apiKey);
+        }
+    },
+    
+    saveActiveProfileLocally() {
+        if (this.activeProfileId) {
+            localStorage.setItem('apex_active_profile', this.activeProfileId);
         }
     },
     
@@ -108,10 +123,10 @@ const ProfileManager = {
      * Normalized Signals = Total Lots traded (1 lot = 1 signal)
      */
     calculateNorthStar(profile) {
-        const stats = profile.stats || {};
-        const netProfit = stats.netProfit || 0;
-        const totalLots = stats.totalLots || 0; // Normalized signals
-        const profitFactor = stats.profitFactor || 0;
+        // DB uses snake_case, legacy used camelCase nested stats object
+        const netProfit = profile.total_pnl || profile.stats?.netProfit || 0;
+        const totalLots = profile.total_lots || profile.stats?.totalLots || 0;
+        const profitFactor = profile.profit_factor || profile.stats?.profitFactor || 0;
         
         if (totalLots === 0 || profitFactor === 0) return 0;
         
@@ -130,66 +145,130 @@ const ProfileManager = {
     // PROFILE CRUD
     // ═══════════════════════════════════════════════════════════════════════
     
-    createProfile(data) {
-        const profile = {
-            id: 'profile_' + Date.now(),
-            name: data.name || 'New Profile',
-            provider: data.provider || 'google',
-            model: data.model || this.getDefaultModel(data.provider || 'google'),
-            apiKey: data.apiKey || '',
-            imagePath: data.imagePath || null,
-            status: 'inactive',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            stats: {
-                netProfit: 0,
-                totalLots: 0,      // Normalized signals (1 lot = 1 signal)
-                profitFactor: 0,
-                totalCalls: 0,
-                successRate: 0,
-                avgLatency: 0,
-                lastUsed: null
+    async createProfile(data) {
+        try {
+            const payload = {
+                name: data.name || 'New Profile',
+                symbol: data.symbol || this.getCurrentSymbol(),
+                provider: data.provider || 'google',
+                sentiment_model: data.model || this.getDefaultModel(data.provider || 'google'),
+            };
+            
+            // Include trading_config if provided
+            if (data.trading_config) {
+                payload.trading_config = data.trading_config;
             }
-        };
-        
-        this.profiles.push(profile);
-        this.sortProfilesByNorthStar();
-        this.saveProfiles();
-        
-        return profile;
+            
+            const response = await fetch('/api/profile/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const result = await response.json();
+            if (!result.success) throw new Error(result.error);
+            
+            const profile = { ...result.profile, apiKey: data.apiKey || '' };
+            
+            // Store API key locally
+            this.saveApiKeyLocally(profile.id, data.apiKey);
+            
+            this.profiles.push(profile);
+            this.sortProfilesByNorthStar();
+            
+            console.log('[ProfileManager] Created profile:', profile.name, profile.id);
+            return profile;
+        } catch (e) {
+            console.error('[ProfileManager] Create failed:', e);
+            return null;
+        }
     },
     
-    updateProfile(id, updates) {
-        const index = this.profiles.findIndex(p => p.id === id);
-        if (index === -1) return null;
-        
-        this.profiles[index] = {
-            ...this.profiles[index],
-            ...updates,
-            updatedAt: new Date().toISOString()
-        };
-        
-        this.sortProfilesByNorthStar();
-        this.saveProfiles();
-        
-        return this.profiles[index];
+    /** Get the current symbol from the active tab or default */
+    getCurrentSymbol() {
+        // Try ApexTabs active symbol
+        if (typeof ApexTabs !== 'undefined' && ApexTabs.activeTab) {
+            return ApexTabs.activeTab.toUpperCase();
+        }
+        // Try active symbol global
+        if (typeof ACTIVE_SYMBOL !== 'undefined') {
+            return ACTIVE_SYMBOL;
+        }
+        return 'XAUJ26';
     },
     
-    deleteProfile(id) {
-        const index = this.profiles.findIndex(p => p.id === id);
-        if (index === -1) return false;
-        
-        this.profiles.splice(index, 1);
-        
-        if (this.activeProfileId === id) {
-            this.activeProfileId = null;
+    async updateProfile(id, updates) {
+        try {
+            // Separate API key from DB updates
+            if (updates.apiKey !== undefined) {
+                this.saveApiKeyLocally(id, updates.apiKey);
+            }
+            
+            // Map frontend field names to DB field names
+            const dbUpdates = {};
+            if (updates.name) dbUpdates.name = updates.name;
+            if (updates.provider) dbUpdates.provider = updates.provider;
+            if (updates.model) dbUpdates.sentiment_model = updates.model;
+            if (updates.imagePath) dbUpdates.image_path = updates.imagePath;
+            if (updates.image_path) dbUpdates.image_path = updates.image_path;
+            if (updates.symbol) dbUpdates.symbol = updates.symbol;
+            if (updates.trading_config) dbUpdates.trading_config = updates.trading_config;
+            
+            // Only call API if there are DB-level updates
+            if (Object.keys(dbUpdates).length > 0) {
+                const response = await fetch(`/api/profile/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dbUpdates)
+                });
+                
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error);
+            }
+            
+            // Update local cache
+            const index = this.profiles.findIndex(p => p.id === id);
+            if (index !== -1) {
+                this.profiles[index] = {
+                    ...this.profiles[index],
+                    ...updates,
+                    updatedAt: new Date().toISOString()
+                };
+            }
+            
+            this.sortProfilesByNorthStar();
+            return this.profiles[index] || null;
+        } catch (e) {
+            console.error('[ProfileManager] Update failed:', e);
+            return null;
         }
-        if (this.selectedProfileId === id) {
-            this.selectedProfileId = null;
+    },
+    
+    async deleteProfile(id) {
+        try {
+            const response = await fetch(`/api/profile/${id}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.error);
+            
+            // Clean up localStorage
+            localStorage.removeItem(`apex_apikey_${id}`);
+            
+            const index = this.profiles.findIndex(p => p.id === id);
+            if (index !== -1) this.profiles.splice(index, 1);
+            
+            if (this.activeProfileId === id) {
+                this.activeProfileId = null;
+            }
+            if (this.selectedProfileId === id) {
+                this.selectedProfileId = null;
+            }
+            
+            console.log('[ProfileManager] Deleted profile:', id);
+            return true;
+        } catch (e) {
+            console.error('[ProfileManager] Delete failed:', e);
+            return false;
         }
-        
-        this.saveProfiles();
-        return true;
     },
     
     setActiveProfile(id) {
@@ -200,7 +279,7 @@ const ProfileManager = {
         profile.status = 'active';
         this.activeProfileId = id;
         
-        this.saveProfiles();
+        this.saveActiveProfileLocally();
         this.render();
         
         window.dispatchEvent(new CustomEvent('apex:profile:change', { detail: { profile } }));
@@ -285,6 +364,12 @@ const ProfileManager = {
                 ${isFormView ? this.renderForm(editingProfile) : this.renderLeaderboard()}
             </div>
         `;
+        
+        // Initialize Trading Config Panel after DOM is ready
+        if (isFormView && typeof TradingConfigPanel !== 'undefined') {
+            const configObj = this._parseProfileTradingConfig(editingProfile);
+            TradingConfigPanel.render('pm-trading-config-panel', configObj);
+        }
     },
     
     renderLeaderboard() {
@@ -310,7 +395,9 @@ const ProfileManager = {
         const isActive = profile.status === 'active';
         const isSelected = profile.id === this.selectedProfileId;
         const northStar = this.calculateNorthStar(profile);
-        const modelShort = this.getModelShortName(profile.provider, profile.model);
+        const modelId = profile.sentiment_model || profile.model;
+        const modelShort = this.getModelShortName(profile.provider, modelId);
+        const imageSrc = profile.image_path || profile.imagePath;
         
         return `
             <div class="pm-profile-row ${isSelected ? 'pm-profile-row--selected' : ''} ${isActive ? 'pm-profile-row--active' : ''}"
@@ -319,8 +406,8 @@ const ProfileManager = {
                  oncontextmenu="event.preventDefault(); ProfileManager.showContextMenu(event, '${profile.id}')">
                 
                 <div class="pm-avatar-container">
-                    ${profile.imagePath 
-                        ? `<img class="pm-avatar" src="${profile.imagePath}" alt="${profile.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                    ${imageSrc 
+                        ? `<img class="pm-avatar" src="${imageSrc}" alt="${profile.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
                            <div class="pm-avatar pm-avatar--placeholder" style="display:none;">${provider?.icon || '?'}</div>`
                         : `<div class="pm-avatar pm-avatar--placeholder">${provider?.icon || '?'}</div>`
                     }
@@ -349,7 +436,8 @@ const ProfileManager = {
     renderForm(profile) {
         const provider = profile?.provider || 'google';
         const providerConfig = this.providers[provider];
-        const imageSrc = this.pendingImagePreview || profile?.imagePath;
+        const imageSrc = this.pendingImagePreview || profile?.image_path || profile?.imagePath;
+        const currentModel = profile?.sentiment_model || profile?.model;
         
         return `
             <form class="pm-form" onsubmit="event.preventDefault(); return false;">
@@ -385,6 +473,18 @@ const ProfileManager = {
                            onkeydown="event.stopPropagation()">
                 </div>
                 
+                <!-- Asset / Symbol -->
+                <div class="pm-form-group">
+                    <label class="pm-label">Asset</label>
+                    <select class="pm-select" id="pm-symbol" onclick="event.stopPropagation()">
+                        ${['XAUJ26', 'US100H26', 'US30H26', 'US500H26', 'BTCF26', 'USOILH26'].map(s => {
+                            const names = { XAUJ26: 'Gold (XAUJ26)', US100H26: 'US100 (NAS)', US30H26: 'US30 (DOW)', US500H26: 'US500 (SPX)', BTCF26: 'BTC', USOILH26: 'Oil (CL)' };
+                            const selected = (profile?.symbol || this.getCurrentSymbol()) === s ? 'selected' : '';
+                            return `<option value="${s}" ${selected}>${names[s] || s}</option>`;
+                        }).join('')}
+                    </select>
+                </div>
+                
                 <!-- Provider -->
                 <div class="pm-form-group">
                     <label class="pm-label">Provider</label>
@@ -404,7 +504,7 @@ const ProfileManager = {
                     <label class="pm-label">Model</label>
                     <select class="pm-select" id="pm-model" onclick="event.stopPropagation()">
                         ${providerConfig.models.map(model => `
-                            <option value="${model.id}" ${profile?.model === model.id ? 'selected' : ''}>
+                            <option value="${model.id}" ${currentModel === model.id ? 'selected' : ''}>
                                 ${model.name}
                             </option>
                         `).join('')}
@@ -425,6 +525,11 @@ const ProfileManager = {
                 </div>
                 
                 <div id="pm-connection-status"></div>
+                
+                <!-- Trading Config Panel (TradingView-style inputs) -->
+                <div class="pm-form-group">
+                    <div id="pm-trading-config-panel"></div>
+                </div>
                 
                 <!-- Actions -->
                 <div class="pm-form-actions">
@@ -468,6 +573,12 @@ const ProfileManager = {
         const nameInput = document.getElementById('pm-name');
         const currentName = nameInput?.value || '';
         
+        // Preserve current config panel state before re-render
+        let currentConfig = null;
+        if (typeof TradingConfigPanel !== 'undefined') {
+            currentConfig = TradingConfigPanel.getConfig();
+        }
+        
         // Temporarily store form data
         const tempProfile = this.editingProfileId 
             ? { ...this.profiles.find(p => p.id === this.editingProfileId), provider, model: this.getDefaultModel(provider) }
@@ -481,6 +592,11 @@ const ProfileManager = {
             const newNameInput = document.getElementById('pm-name');
             if (newNameInput && currentName) {
                 newNameInput.value = currentName;
+            }
+            // Re-init config panel with preserved state
+            if (typeof TradingConfigPanel !== 'undefined') {
+                const configObj = currentConfig || this._parseProfileTradingConfig(tempProfile);
+                TradingConfigPanel.render('pm-trading-config-panel', configObj);
             }
         }
     },
@@ -545,15 +661,23 @@ const ProfileManager = {
         const name = document.getElementById('pm-name')?.value || 'New Profile';
         const model = document.getElementById('pm-model')?.value;
         const apiKey = document.getElementById('pm-apikey')?.value;
+        const symbol = document.getElementById('pm-symbol')?.value || this.getCurrentSymbol();
         
         const activeBtn = document.querySelector('.pm-provider-btn--active');
         const provider = activeBtn 
             ? activeBtn.getAttribute('onclick').match(/'(\w+)'/)?.[1] 
             : 'google';
         
+        // Read trading config from the structured panel
+        let trading_config = null;
+        if (typeof TradingConfigPanel !== 'undefined') {
+            trading_config = TradingConfigPanel.getConfig();
+        }
+        
         if (this.editingProfileId) {
             // Update existing
-            let imagePath = this.profiles.find(p => p.id === this.editingProfileId)?.imagePath;
+            let imagePath = this.profiles.find(p => p.id === this.editingProfileId)?.imagePath 
+                         || this.profiles.find(p => p.id === this.editingProfileId)?.image_path;
             
             // Upload new image if pending
             if (this.pendingImageFile) {
@@ -561,16 +685,20 @@ const ProfileManager = {
                 if (uploadedPath) imagePath = uploadedPath;
             }
             
-            this.updateProfile(this.editingProfileId, { name, provider, model, apiKey, imagePath });
+            const updates = { name, provider, model, apiKey, symbol, image_path: imagePath };
+            if (trading_config) updates.trading_config = trading_config;
+            await this.updateProfile(this.editingProfileId, updates);
         } else {
             // Create new
-            const newProfile = this.createProfile({ name, provider, model, apiKey });
+            const createData = { name, provider, model, apiKey, symbol };
+            if (trading_config) createData.trading_config = trading_config;
+            const newProfile = await this.createProfile(createData);
             
             // Upload image if pending
-            if (this.pendingImageFile) {
+            if (newProfile && this.pendingImageFile) {
                 const uploadedPath = await this.uploadImage(newProfile.id);
                 if (uploadedPath) {
-                    this.updateProfile(newProfile.id, { imagePath: uploadedPath });
+                    await this.updateProfile(newProfile.id, { image_path: uploadedPath });
                 }
             }
         }
@@ -654,33 +782,69 @@ const ProfileManager = {
     // EXPORT FOR OTHER COMPONENTS
     // ═══════════════════════════════════════════════════════════════════════
     
+    /** Parse trading config from a profile into a plain object */
+    _parseProfileTradingConfig(profile) {
+        const fallback = (typeof TorraTraderBridge !== 'undefined')
+            ? TorraTraderBridge.DEFAULT_TRADING_CONFIG
+            : { sentiment_weights: {}, timeframe_weights: {}, thresholds: {}, risk: {} };
+        if (!profile) return { ...fallback };
+        let tc = profile.trading_config;
+        if (tc) {
+            try {
+                const parsed = typeof tc === 'string' ? JSON.parse(tc) : tc;
+                if (parsed.sentiment_weights) return parsed;
+            } catch (e) { /* fall through */ }
+        }
+        return { ...fallback };
+    },
+
     getActiveConfig() {
         const profile = this.profiles.find(p => p.id === this.activeProfileId);
         if (!profile) return null;
         
+        // Parse trading_config from DB (stored as JSON string)
+        let tradingConfig = null;
+        try {
+            if (typeof profile.trading_config === 'string') {
+                tradingConfig = JSON.parse(profile.trading_config);
+            } else if (typeof profile.trading_config === 'object' && profile.trading_config) {
+                tradingConfig = profile.trading_config;
+            }
+        } catch (e) { /* ignore parse errors */ }
+        
         return {
             id: profile.id,
+            symbol: profile.symbol,
             provider: profile.provider,
-            model: profile.model,
-            apiKey: profile.apiKey
+            model: profile.sentiment_model || profile.model,
+            apiKey: profile.apiKey || localStorage.getItem(`apex_apikey_${profile.id}`) || '',
+            tradingConfig: tradingConfig
         };
     },
     
     /**
      * Update profile stats (called by trading engine)
+     * Persists to DB via PATCH
      * @param {string} profileId 
-     * @param {object} stats { netProfit, totalLots, profitFactor }
+     * @param {object} stats { total_pnl, total_lots, profit_factor, ... }
      */
-    updateStats(profileId, stats) {
-        const profile = this.profiles.find(p => p.id === profileId);
-        if (!profile) return;
-        
-        profile.stats = { ...profile.stats, ...stats };
-        this.sortProfilesByNorthStar();
-        this.saveProfiles();
-        
-        if (this.currentView === 'list') {
-            this.render();
+    async updateStats(profileId, stats) {
+        try {
+            await this.updateProfile(profileId, stats);
+            
+            // Update local cache
+            const profile = this.profiles.find(p => p.id === profileId);
+            if (profile) {
+                Object.assign(profile, stats);
+            }
+            
+            this.sortProfilesByNorthStar();
+            
+            if (this.currentView === 'list') {
+                this.render();
+            }
+        } catch (e) {
+            console.error('[ProfileManager] Stats update failed:', e);
         }
     },
     

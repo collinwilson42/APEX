@@ -811,30 +811,14 @@
                 </div>
             </div>
 
-            <!-- Q3: Instance Manager -->
+            <!-- Q3: Instance Manager (Seed 16 — Live Process Status) -->
             <div class="cyto-quadrant">
                 <div class="cyto-quadrant__header">
                     <span class="cyto-quadrant__title">Instances</span>
                 </div>
                 <div class="cyto-quadrant__content">
-                    <div class="cyto-instance-input">
-                        <input type="text" placeholder="New instance name..." id="q3-input">
-                        <button>+</button>
-                    </div>
-                    <div class="cyto-stats-row">
-                        <div class="cyto-stat-card">
-                            <div class="cyto-stat-card__label">Classes</div>
-                            <div class="cyto-stat-card__value" id="stat-classes">6</div>
-                        </div>
-                        <div class="cyto-stat-card">
-                            <div class="cyto-stat-card__label">Instances</div>
-                            <div class="cyto-stat-card__value" id="stat-instances">0</div>
-                        </div>
-                        <div class="cyto-stat-card">
-                            <div class="cyto-stat-card__label">Active</div>
-                            <div class="cyto-stat-card__value" id="stat-active">0</div>
-                        </div>
-                    </div>
+                    <!-- Live instance status grid (populated by CytoBaseStatus.init()) -->
+                    <div id="cyto-instance-status"></div>
                 </div>
             </div>
 
@@ -1237,7 +1221,231 @@
             ctx.fillText('1.618', cx + Math.cos(labelAngle) * (r1618 + 12), cy + Math.sin(labelAngle) * (r1618 + 12));
         }
 
-        draw();
+        // ============================================================
+        // NODE DATA & RENDERING ENGINE
+        // ============================================================
+        let cytoNodes = [];          // Current nodes from API
+        let activeFilter = 'ALL';    // Class filter
+        let simRunning = false;      // Simulator state
+        let pollInterval = null;
+        const CLASS_COLORS = {
+            BTC:   { r: 247, g: 147, b: 26  },  // Bitcoin orange
+            OIL:   { r: 120, g: 180, b: 60  },  // Crude green
+            GOLD:  { r: 255, g: 215, b: 0   },  // Gold
+            US100: { r: 0,   g: 242, b: 234 },  // Cyan (our accent)
+            US30:  { r: 173, g: 235, b: 179 },  // Mint (our primary)
+            US500: { r: 32,  g: 178, b: 170 },  // Teal
+        };
+
+        function radiusToPixel(radius) {
+            // Map 0.618→1.618 to r618→r1618 pixel positions
+            const r618px = maxR * 0.38;
+            const r1618px = maxR * 0.82;
+            const t = (radius - 0.618) / (1.618 - 0.618); // 0→1
+            const clamped = Math.max(0, Math.min(1, t));
+            return r618px + clamped * (r1618px - r618px);
+        }
+
+        function slotToAngle(slot) {
+            // 288 slots → full circle, starting at 12 o'clock (-PI/2)
+            return (slot / SLOT_COUNT) * Math.PI * 2 - Math.PI / 2;
+        }
+
+        function getClassFromInstanceId(instanceId) {
+            // Instance IDs look like: "BTCF26_SIM_20260211_123456"
+            if (instanceId.includes('BTC'))   return 'BTC';
+            if (instanceId.includes('OIL'))   return 'OIL';
+            if (instanceId.includes('XAU'))   return 'GOLD';
+            if (instanceId.includes('US100')) return 'US100';
+            if (instanceId.includes('US30'))  return 'US30';
+            if (instanceId.includes('US500')) return 'US500';
+            return 'UNKNOWN';
+        }
+
+        function drawNodes() {
+            if (!cytoNodes.length) return;
+
+            const filtered = activeFilter === 'ALL'
+                ? cytoNodes
+                : cytoNodes.filter(n => n._class === activeFilter);
+
+            for (const node of filtered) {
+                const angle = slotToAngle(node.theta_slot);
+                const r = radiusToPixel(node.radius || 1.0);
+                const x = cx + Math.cos(angle) * r;
+                const y = cy + Math.sin(angle) * r;
+
+                const cls = node._class || 'US100';
+                const color = CLASS_COLORS[cls] || CLASS_COLORS.US100;
+                const size = Math.max(2, Math.min(12, node.size || 6));
+                const sat = node.saturation || 0.5;
+                const alpha = 0.3 + sat * 0.7;
+
+                // Outer glow
+                ctx.beginPath();
+                ctx.arc(x, y, size + 3, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.15})`;
+                ctx.fill();
+
+                // Main dot
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                const grad = ctx.createRadialGradient(x - size * 0.3, y - size * 0.3, 0, x, y, size);
+                grad.addColorStop(0, `rgba(${Math.min(255, color.r + 60)}, ${Math.min(255, color.g + 60)}, ${Math.min(255, color.b + 60)}, ${alpha})`);
+                grad.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.7})`);
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Trade marker — diamond outline for nodes with trades
+                if (node.has_trade) {
+                    const d = size + 5;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y - d);
+                    ctx.lineTo(x + d, y);
+                    ctx.lineTo(x, y + d);
+                    ctx.lineTo(x - d, y);
+                    ctx.closePath();
+                    const pnlColor = (node.pnl || 0) >= 0
+                        ? `rgba(173, 235, 179, ${alpha})`   // mint for profit
+                        : `rgba(255, 100, 100, ${alpha})`;  // red for loss
+                    ctx.strokeStyle = pnlColor;
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function drawFrame() {
+            draw();      // Base radial (rings, ticks, labels)
+            drawNodes(); // Overlay data nodes
+            requestAnimationFrame(drawFrame);
+        }
+
+        // Start animation loop
+        requestAnimationFrame(drawFrame);
+
+        // ============================================================
+        // DATA POLLING
+        // ============================================================
+        async function fetchAllNodes() {
+            try {
+                // First get simulator status to find instance IDs
+                const statusRes = await fetch('/api/cyto/sim/status');
+                const status = await statusRes.json();
+
+                simRunning = status.running;
+                updateSimIndicator();
+
+                if (!status.running && !status.instances) {
+                    // Not running, try to get any existing instances
+                    const instRes = await fetch('/api/cyto/instances');
+                    const instData = await instRes.json();
+                    if (!instData.success || !instData.instances.length) return;
+
+                    // Fetch nodes for each instance
+                    const allNodes = [];
+                    for (const inst of instData.instances) {
+                        const cls = getClassFromInstanceId(inst.instance_id);
+                        const res = await fetch(`/api/cyto/instances/${inst.instance_id}/radial`);
+                        const data = await res.json();
+                        if (data.success && data.nodes) {
+                            for (const n of data.nodes) {
+                                n._class = cls;
+                                n._instance = inst.instance_id;
+                            }
+                            allNodes.push(...data.nodes);
+                        }
+                    }
+                    cytoNodes = allNodes;
+                    updateStats();
+                    return;
+                }
+
+                // Simulator is running — use instance IDs from status
+                const instances = status.instances || {};
+                const allNodes = [];
+                let totalTrades = 0;
+
+                for (const [cls, info] of Object.entries(instances)) {
+                    const instanceId = info.instance_id;
+                    if (!instanceId) continue;
+                    try {
+                        const res = await fetch(`/api/cyto/instances/${instanceId}/radial`);
+                        const data = await res.json();
+                        if (data.success && data.nodes) {
+                            for (const n of data.nodes) {
+                                n._class = cls;
+                                n._instance = instanceId;
+                            }
+                            allNodes.push(...data.nodes);
+                            totalTrades += (info.trades || 0);
+                        }
+                    } catch (e) {
+                        console.warn(`[Cyto] Failed to fetch ${cls}:`, e);
+                    }
+                }
+
+                cytoNodes = allNodes;
+                updateStats();
+
+                // Update header
+                document.getElementById('header-epoch').textContent =
+                    `Epoch: ${status.session_id || 'none'} | Bars: ${status.bars_generated || 0}`;
+
+            } catch (e) {
+                console.warn('[Cyto] Poll failed:', e);
+            }
+        }
+
+        function updateStats() {
+            const filtered = activeFilter === 'ALL'
+                ? cytoNodes
+                : cytoNodes.filter(n => n._class === activeFilter);
+
+            document.getElementById('bar-nodes').textContent = filtered.length;
+
+            const trades = filtered.filter(n => n.has_trade);
+            document.getElementById('bar-layer').textContent =
+                new Set(filtered.map(n => n._instance)).size;
+
+            // Progress: how many of 288 slots are filled
+            const uniqueSlots = new Set(filtered.map(n => n.theta_slot)).size;
+            const pct = Math.round((uniqueSlots / SLOT_COUNT) * 100);
+            document.getElementById('bar-progress').textContent = `${pct}%`;
+
+            // Update Q3 stats
+            const avgSent = filtered.length
+                ? (filtered.reduce((s, n) => s + (n.weighted_final || 0), 0) / filtered.length)
+                : 0;
+            const totalPnl = trades.reduce((s, n) => s + (n.pnl || 0), 0);
+            const wins = trades.filter(n => (n.pnl || 0) > 0).length;
+            const winRate = trades.length ? ((wins / trades.length) * 100) : 0;
+
+            // Update stat values if elements exist
+            const sentEl = document.getElementById('stat-sentiment');
+            const tradesEl = document.getElementById('stat-trades');
+            const pnlEl = document.getElementById('stat-pnl');
+            const wrEl = document.getElementById('stat-winrate');
+            if (sentEl) sentEl.textContent = avgSent.toFixed(3);
+            if (tradesEl) tradesEl.textContent = trades.length;
+            if (pnlEl) {
+                pnlEl.textContent = `${totalPnl.toFixed(0)}`;
+                pnlEl.style.color = totalPnl >= 0 ? '#ADEBB3' : '#ff6464';
+            }
+            if (wrEl) wrEl.textContent = `${winRate.toFixed(0)}%`;
+        }
+
+        function updateSimIndicator() {
+            const dot = document.querySelector('.cyto-header__epoch-dot');
+            if (dot) {
+                dot.style.background = simRunning ? '#ADEBB3' : '#4a4a4a';
+                dot.style.boxShadow = simRunning ? '0 0 6px #ADEBB3' : 'none';
+            }
+        }
+
+        // Start polling (every 10 seconds)
+        fetchAllNodes();
+        pollInterval = setInterval(fetchAllNodes, 10000);
 
         // ============================================================
         // HEADER CLOCK
@@ -1279,14 +1487,16 @@
         // TAB INTERACTIONS (Q1 classes, Q2 tabs, Q4 time windows)
         // ============================================================
 
-        // Q1: Class tabs
+        // Q1: Class tabs — filter radial nodes by asset class
         document.getElementById('q1-classes').addEventListener('click', function(e) {
             const btn = e.target.closest('.cyto-class-btn');
             if (!btn) return;
             this.querySelectorAll('.cyto-class-btn').forEach(b => b.classList.remove('cyto-class-btn--active'));
             btn.classList.add('cyto-class-btn--active');
+            activeFilter = btn.dataset.class;
             document.getElementById('header-class').textContent =
                 btn.dataset.class === 'ALL' ? 'All Classes' : btn.dataset.class;
+            updateStats(); // Refresh stats for filtered view
         });
 
         // Q2: Inspector tabs
@@ -1305,6 +1515,109 @@
             btn.classList.add('cyto-time-btn--active');
             document.querySelector('.cyto-header__window').textContent = btn.textContent.toLowerCase() + ' window';
         });
+
+        // ============================================================
+        // SEED 16: Instance Status Panel (Q3)
+        // ============================================================
+        // Inline CytoBaseStatus — polls /api/instance/status and renders live cards
+
+        const CytoBaseStatus = {
+            _pollInterval: null,
+            _container: null,
+            _status: null,
+
+            init(containerId = 'cyto-instance-status') {
+                this._container = document.getElementById(containerId);
+                if (!this._container) return;
+                this.refresh();
+                this._pollInterval = setInterval(() => this.refresh(), 3000);
+                window.CytoBaseStatus = this;
+            },
+
+            async refresh() {
+                try {
+                    const res = await fetch('/api/instance/status');
+                    this._status = await res.json();
+                    this._render();
+                } catch (e) { /* silent */ }
+            },
+
+            _render() {
+                if (!this._container || !this._status) return;
+                const instances = this._status.instances || {};
+                const running = this._status.running_count || 0;
+                const total = this._status.total_count || 6;
+
+                const sorted = Object.entries(instances).sort((a, b) => {
+                    if (a[1].state === 'running' && b[1].state !== 'running') return -1;
+                    if (a[1].state !== 'running' && b[1].state === 'running') return 1;
+                    return a[0].localeCompare(b[0]);
+                });
+
+                this._container.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px 4px;">
+                        <span style="font-family:'Inter',sans-serif;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);">PROCESSES</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;">
+                            <span style="color:#5EEAD4;">${running}</span>
+                            <span style="color:rgba(255,255,255,0.2);margin:0 2px;">/</span>
+                            <span style="color:rgba(255,255,255,0.35);">${total}</span>
+                        </span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:0 6px 6px;">
+                        ${sorted.map(([key, info]) => this._card(key, info)).join('')}
+                    </div>
+                `;
+                this._container.querySelectorAll('.cyto-inst-card').forEach(card => {
+                    card.addEventListener('click', () => this._toggle(card.dataset.symbol));
+                });
+            },
+
+            _card(key, info) {
+                const isRunning = info.state === 'running';
+                const isCrashed = info.state === 'crashed';
+                const dot = isRunning ? '●' : isCrashed ? '✗' : '○';
+                const dotColor = isRunning ? '#5EEAD4' : isCrashed ? '#F87171' : 'rgba(255,255,255,0.2)';
+                const nameColor = isRunning ? '#A7F3D0' : isCrashed ? '#FCA5A5' : 'rgba(255,255,255,0.4)';
+                let sub = 'IDLE';
+                if (isRunning && info.runtime_seconds > 0) {
+                    const m = Math.floor(info.runtime_seconds / 60);
+                    const h = Math.floor(m / 60);
+                    sub = h > 0 ? `${h}h ${m%60}m` : m > 0 ? `${m}m` : `${Math.floor(info.runtime_seconds)}s`;
+                    sub = `${info.mode} · ${sub}`;
+                } else if (isCrashed) sub = 'CRASHED';
+
+                const glow = isRunning ? '0 0 10px rgba(94,234,212,0.08)' : 'none';
+                return `
+                    <div class="cyto-inst-card" data-symbol="${key}" title="Click to ${isRunning?'stop':'start'} ${key}"
+                         style="background:rgba(22,24,28,0.95);border-radius:10px;padding:8px 6px;cursor:pointer;
+                                box-shadow:2px 2px 6px rgba(0,0,0,0.4),-1px -1px 4px rgba(255,255,255,0.02),${glow};
+                                display:flex;flex-direction:column;align-items:center;gap:3px;min-height:52px;justify-content:center;
+                                transition:all 0.15s ease;">
+                        <span style="font-size:12px;color:${dotColor};${isRunning?'text-shadow:0 0 6px rgba(94,234,212,0.5);':''}">${dot}</span>
+                        <span style="font-family:'Inter',sans-serif;font-weight:600;font-size:10px;letter-spacing:0.5px;color:${nameColor};">${key}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:${isRunning?'rgba(94,234,212,0.5)':'rgba(255,255,255,0.25)'};">${sub}</span>
+                    </div>
+                `;
+            },
+
+            async _toggle(symbol) {
+                try {
+                    await fetch(`/api/instance/${symbol}/toggle`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mode: 'SIM' })
+                    });
+                    setTimeout(() => this.refresh(), 500);
+                } catch (e) { console.error('Toggle error:', e); }
+            },
+
+            destroy() {
+                if (this._pollInterval) { clearInterval(this._pollInterval); this._pollInterval = null; }
+            }
+        };
+
+        // Initialize the instance status panel
+        CytoBaseStatus.init();
 
     })();
     </script>

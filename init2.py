@@ -13,6 +13,7 @@ import threading
 import atexit
 import time
 import numpy as np
+import json
 from flask import Flask, render_template, jsonify, request, redirect, send_from_directory
 from flask_cors import CORS
 
@@ -94,6 +95,53 @@ except ImportError as e:
 except Exception as e:
     print(f"✗ Failed to initialize sentiment engine: {e}")
 
+# Chart Health Check: run standalone via `python chart_health_check.py`
+# (no Flask route registration — avoids circular import with init2)
+
+# ============================================================================
+# CYTOBASE SIMULATOR INTEGRATION
+# ============================================================================
+
+try:
+    from cyto_routes import register_cyto_routes
+    register_cyto_routes(app)
+    print("✓ CytoBase data routes registered")
+except ImportError as e:
+    print(f"⚠️  CytoBase data routes not available: {e}")
+except Exception as e:
+    print(f"✗ Failed to register CytoBase data routes: {e}")
+
+# ============================================================================
+# INSTANCE PROCESS MANAGER (Seed 16 — Independent Instances)
+# ============================================================================
+# Replaces monolithic CytoSimulator with per-symbol subprocesses.
+# Each instance runs as its own Python process (instance_runner.py).
+
+try:
+    from process_manager import register_process_routes, get_process_manager
+    register_process_routes(app)
+    
+    # Clean up any orphan processes from previous unclean shutdown
+    pm = get_process_manager()
+    pm.cleanup_orphans()
+except ImportError as e:
+    print(f"⚠️  Process manager not available: {e}")
+except Exception as e:
+    print(f"✗ Failed to register process manager: {e}")
+
+# ============================================================================
+# TORRA TRADER ROUTES (Seed 17 — The First Run)
+# ============================================================================
+# API routes for starting/stopping torra_trader.py from the frontend.
+# Bridges Profile Manager (API key) → Instance Browser (activation) → Trader subprocess.
+
+try:
+    from trader_routes import register_trader_routes
+    register_trader_routes(app)
+except ImportError as e:
+    print(f"⚠️  Trader routes not available: {e}")
+except Exception as e:
+    print(f"✗ Failed to register trader routes: {e}")
 
 # ============================================================================
 # INDICATOR CALCULATION
@@ -248,6 +296,34 @@ def calculate_indicators_for_fill(history_rates):
 
 def get_symbol_db_path(symbol_id):
     return SYMBOL_DATABASES.get(symbol_id.upper(), {}).get('db_path')
+
+def resolve_symbol_id(raw_id):
+    """Resolve a symbol ID to a valid SYMBOL_DATABASES key.
+    Handles: exact match, .sim suffix, case insensitivity, tr_ prefixes.
+    Returns (resolved_id, config) or (None, None) if not found."""
+    if not raw_id:
+        return None, None
+    
+    sid = raw_id.strip().upper()
+    
+    # Strip .sim/.SIM suffix
+    if sid.endswith('.SIM'):
+        sid = sid[:-4]
+    
+    # Direct lookup
+    config = SYMBOL_DATABASES.get(sid)
+    if config:
+        return sid, config
+    
+    # Try without any suffix after last dot
+    if '.' in sid:
+        base = sid.rsplit('.', 1)[0]
+        config = SYMBOL_DATABASES.get(base)
+        if config:
+            return base, config
+    
+    return None, None
+
 
 def get_symbol_db_connection(symbol_id):
     db_path = get_symbol_db_path(symbol_id)
@@ -592,24 +668,20 @@ def api_active_symbol():
 
 @app.route('/api/chart-data')
 def api_chart_data():
-    symbol_id = request.args.get('symbol', ACTIVE_SYMBOL)
+    raw_symbol = request.args.get('symbol', ACTIVE_SYMBOL)
     timeframe = request.args.get('timeframe', '15m')
     limit = int(request.args.get('limit', 300))
     
-    # Handle trading instance IDs (tr_xxx) - fall back to active symbol
-    if symbol_id.startswith('tr_'):
-        symbol_id = ACTIVE_SYMBOL
-    
-    # Try uppercase lookup
-    config = SYMBOL_DATABASES.get(symbol_id.upper())
+    # Resolve symbol through robust lookup (handles .sim suffix, tr_ prefix, case)
+    symbol_id, config = resolve_symbol_id(raw_symbol)
     if not config:
-        # Fall back to active symbol if not found
-        config = SYMBOL_DATABASES.get(ACTIVE_SYMBOL)
+        # Only fall back to active symbol if the raw input was empty or a tr_ ID
+        if not raw_symbol or raw_symbol.startswith('tr_'):
+            symbol_id, config = resolve_symbol_id(ACTIVE_SYMBOL)
         if not config:
-            return jsonify({'success': False, 'error': 'Unknown symbol'}), 404
-        symbol_id = ACTIVE_SYMBOL
+            return jsonify({'success': False, 'error': f'Unknown symbol: {raw_symbol}'}), 404
     
-    conn, error = get_symbol_db_connection(symbol_id.upper())
+    conn, error = get_symbol_db_connection(symbol_id)
     if conn is None: 
         return jsonify({'success': False, 'error': error}), 404
     try:
@@ -625,21 +697,18 @@ def api_chart_data():
 
 @app.route('/api/basic')
 def api_basic():
-    symbol_id = request.args.get('symbol', ACTIVE_SYMBOL)
+    raw_symbol = request.args.get('symbol', ACTIVE_SYMBOL)
     timeframe = request.args.get('timeframe', '1m')
     limit = int(request.args.get('limit', 300))
     
-    # Handle trading instance IDs (tr_xxx) - fall back to active symbol
-    if symbol_id.startswith('tr_'):
-        symbol_id = ACTIVE_SYMBOL
-    
-    config = SYMBOL_DATABASES.get(symbol_id.upper())
+    symbol_id, config = resolve_symbol_id(raw_symbol)
     if not config:
-        config = SYMBOL_DATABASES.get(ACTIVE_SYMBOL)
-        symbol_id = ACTIVE_SYMBOL
+        symbol_id, config = resolve_symbol_id(ACTIVE_SYMBOL)
+    if not config:
+        return jsonify({'success': False, 'error': f'Unknown symbol: {raw_symbol}'}), 404
     
-    symbol_name = config['symbol'] if config else symbol_id
-    conn, error = get_symbol_db_connection(symbol_id.upper() if not symbol_id.startswith('tr_') else ACTIVE_SYMBOL)
+    symbol_name = config['symbol']
+    conn, error = get_symbol_db_connection(symbol_id)
     if conn is None: return jsonify({'success': False, 'error': error}), 404
     try:
         cursor = conn.cursor()
@@ -653,21 +722,18 @@ def api_basic():
 
 @app.route('/api/advanced')
 def api_advanced():
-    symbol_id = request.args.get('symbol', ACTIVE_SYMBOL)
+    raw_symbol = request.args.get('symbol', ACTIVE_SYMBOL)
     timeframe = request.args.get('timeframe', '15m')
     limit = int(request.args.get('limit', 300))
     
-    # Handle trading instance IDs (tr_xxx) - fall back to active symbol
-    if symbol_id.startswith('tr_'):
-        symbol_id = ACTIVE_SYMBOL
-    
-    config = SYMBOL_DATABASES.get(symbol_id.upper())
+    symbol_id, config = resolve_symbol_id(raw_symbol)
     if not config:
-        config = SYMBOL_DATABASES.get(ACTIVE_SYMBOL)
-        symbol_id = ACTIVE_SYMBOL
+        symbol_id, config = resolve_symbol_id(ACTIVE_SYMBOL)
+    if not config:
+        return jsonify({'success': False, 'error': f'Unknown symbol: {raw_symbol}'}), 404
     
-    symbol_name = config['symbol'] if config else symbol_id
-    conn, error = get_symbol_db_connection(symbol_id.upper())
+    symbol_name = config['symbol']
+    conn, error = get_symbol_db_connection(symbol_id)
     if conn is None: return jsonify({'success': False, 'error': error}), 404
     try:
         cursor = conn.cursor()
@@ -681,21 +747,18 @@ def api_advanced():
 
 @app.route('/api/fibonacci')
 def api_fibonacci():
-    symbol_id = request.args.get('symbol', ACTIVE_SYMBOL)
+    raw_symbol = request.args.get('symbol', ACTIVE_SYMBOL)
     timeframe = request.args.get('timeframe', '15m')
     limit = int(request.args.get('limit', 300))
     
-    # Handle trading instance IDs (tr_xxx) - fall back to active symbol
-    if symbol_id.startswith('tr_'):
-        symbol_id = ACTIVE_SYMBOL
-    
-    config = SYMBOL_DATABASES.get(symbol_id.upper())
+    symbol_id, config = resolve_symbol_id(raw_symbol)
     if not config:
-        config = SYMBOL_DATABASES.get(ACTIVE_SYMBOL)
-        symbol_id = ACTIVE_SYMBOL
+        symbol_id, config = resolve_symbol_id(ACTIVE_SYMBOL)
+    if not config:
+        return jsonify({'success': False, 'error': f'Unknown symbol: {raw_symbol}'}), 404
     
-    symbol_name = config['symbol'] if config else symbol_id
-    conn, error = get_symbol_db_connection(symbol_id.upper())
+    symbol_name = config['symbol']
+    conn, error = get_symbol_db_connection(symbol_id)
     if conn is None: return jsonify({'success': False, 'error': error}), 404
     try:
         cursor = conn.cursor()
@@ -709,21 +772,18 @@ def api_fibonacci():
 
 @app.route('/api/ath')
 def api_ath():
-    symbol_id = request.args.get('symbol', ACTIVE_SYMBOL)
+    raw_symbol = request.args.get('symbol', ACTIVE_SYMBOL)
     timeframe = request.args.get('timeframe', '15m')
     limit = int(request.args.get('limit', 300))
     
-    # Handle trading instance IDs (tr_xxx) - fall back to active symbol
-    if symbol_id.startswith('tr_'):
-        symbol_id = ACTIVE_SYMBOL
-    
-    config = SYMBOL_DATABASES.get(symbol_id.upper())
+    symbol_id, config = resolve_symbol_id(raw_symbol)
     if not config:
-        config = SYMBOL_DATABASES.get(ACTIVE_SYMBOL)
-        symbol_id = ACTIVE_SYMBOL
+        symbol_id, config = resolve_symbol_id(ACTIVE_SYMBOL)
+    if not config:
+        return jsonify({'success': False, 'error': f'Unknown symbol: {raw_symbol}'}), 404
     
-    symbol_name = config['symbol'] if config else symbol_id
-    conn, error = get_symbol_db_connection(symbol_id.upper())
+    symbol_name = config['symbol']
+    conn, error = get_symbol_db_connection(symbol_id)
     if conn is None: return jsonify({'success': False, 'error': error}), 404
     try:
         cursor = conn.cursor()
@@ -736,7 +796,8 @@ def api_ath():
         conn.close()
 
 @app.route('/api/profiles')
-def api_profiles():
+def api_profiles_legacy():
+    """Legacy route — queries per-symbol DB. Kept for backward compat."""
     symbol_id = request.args.get('symbol')
     if not symbol_id: return jsonify({'success': False, 'error': 'Symbol required'}), 400
     conn, error = get_symbol_db_connection(symbol_id)
@@ -749,6 +810,116 @@ def api_profiles():
         return jsonify({'success': True, 'profiles': [dict(row) for row in cursor.fetchall()]})
     finally:
         conn.close()
+
+
+# ============================================================================
+# PROFILE CRUD API (Persistent profiles in apex_instances.db)
+# ============================================================================
+
+@app.route('/api/profile/list', methods=['GET'])
+def api_profile_list():
+    """Get all profiles. Optional ?symbol= filter."""
+    if not instance_db:
+        return jsonify({"success": False, "error": "Database not available"}), 500
+    
+    symbol = request.args.get('symbol')
+    try:
+        if symbol:
+            profiles = instance_db.get_profiles_by_symbol(symbol)
+        else:
+            profiles = instance_db.get_all_profiles()
+        
+        return jsonify({
+            "success": True,
+            "profiles": [asdict(p) for p in profiles]
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/profile/<profile_id>', methods=['GET'])
+def api_profile_get(profile_id):
+    """Get a single profile by ID."""
+    if not instance_db:
+        return jsonify({"success": False, "error": "Database not available"}), 500
+    
+    profile = instance_db.get_profile(profile_id)
+    if not profile:
+        return jsonify({"success": False, "error": "Profile not found"}), 404
+    
+    return jsonify({"success": True, "profile": asdict(profile)})
+
+
+@app.route('/api/profile/create', methods=['POST'])
+def api_profile_create():
+    """Create a new profile."""
+    if not instance_db:
+        return jsonify({"success": False, "error": "Database not available"}), 500
+    
+    data = request.get_json() or {}
+    name = data.get('name', 'New Profile')
+    symbol = data.get('symbol', 'XAUJ26')
+    
+    kwargs = {}
+    for field in ['provider', 'image_path', 'trading_config',
+                  'sentiment_model', 'sentiment_weights',
+                  'sentiment_threshold', 'position_sizing', 'risk_config',
+                  'entry_rules', 'exit_rules']:
+        if field in data:
+            val = data[field]
+            # JSON-encode dicts/lists for TEXT columns
+            kwargs[field] = json.dumps(val) if isinstance(val, (dict, list)) else val
+    
+    # Auto-populate default trading_config if not provided
+    if 'trading_config' not in kwargs:
+        from instance_database import InstanceDatabaseManager
+        kwargs['trading_config'] = json.dumps(InstanceDatabaseManager.DEFAULT_TRADING_CONFIG)
+    
+    try:
+        profile = instance_db.create_profile(name=name, symbol=symbol, **kwargs)
+        return jsonify({"success": True, "profile": asdict(profile)})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/profile/<profile_id>', methods=['PUT', 'PATCH'])
+def api_profile_update(profile_id):
+    """Update an existing profile."""
+    if not instance_db:
+        return jsonify({"success": False, "error": "Database not available"}), 500
+    
+    data = request.get_json() or {}
+    
+    # JSON-encode any dict/list values before passing to update
+    updates = {}
+    for k, v in data.items():
+        if isinstance(v, (dict, list)):
+            updates[k] = json.dumps(v)
+        else:
+            updates[k] = v
+    
+    try:
+        profile = instance_db.update_profile(profile_id, updates)
+        if not profile:
+            return jsonify({"success": False, "error": "Profile not found"}), 404
+        return jsonify({"success": True, "profile": asdict(profile)})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/profile/<profile_id>', methods=['DELETE'])
+def api_profile_delete(profile_id):
+    """Delete a profile."""
+    if not instance_db:
+        return jsonify({"success": False, "error": "Database not available"}), 500
+    
+    try:
+        deleted = instance_db.delete_profile(profile_id)
+        if not deleted:
+            return jsonify({"success": False, "error": "Profile not found"}), 404
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/hyperspheres')
 def api_hyperspheres():

@@ -133,12 +133,19 @@ const ApexViewRenderer = {
         }
     },
     
+    _lastRenderedTabId: null,
+    
     onStateChange(state) {
         const activeTab = state.tabs.find(t => t.id === state.activeTabId);
         if (!activeTab) {
+            this._lastRenderedTabId = null;
             this.renderEmptyState();
             return;
         }
+        
+        // Skip re-render if same tab is already displayed (prevents config panel flash)
+        if (activeTab.id === this._lastRenderedTabId) return;
+        this._lastRenderedTabId = activeTab.id;
         
         if (activeTab.instanceType === 'trading') {
             this.renderTradingView(activeTab);
@@ -222,6 +229,12 @@ const ApexViewRenderer = {
         
         if (typeof ProfileManager !== 'undefined') ProfileManager.init();
         
+        // Ensure config panel renders after ProfileManager has initialized
+        // (profile selection event may not fire if already selected)
+        if (this.currentDetailsTab === 'config') {
+            setTimeout(() => this._initConfigPanel(), 50);
+        }
+        
         this.controlBody.innerHTML = `
             <div class="database-quadrant-grid">
                 <div class="database-quadrant database-quadrant--instances" id="instance-browser-panel"></div>
@@ -267,6 +280,11 @@ const ApexViewRenderer = {
         });
         const activePage = document.getElementById(`profile-${tab}-page`);
         if (activePage) activePage.classList.add('profile-details__page--active');
+
+        // Init the config panel when switching to config tab (may not have rendered yet)
+        if (tab === 'config') {
+            requestAnimationFrame(() => this._initConfigPanel());
+        }
     },
     
     renderProfileStatsContent() {
@@ -293,20 +311,16 @@ const ApexViewRenderer = {
         if (!profile) {
             return `<div class="profile-config__empty"><div class="profile-stats__empty-icon">⚙️</div><div>Select a profile to view config</div></div>`;
         }
-        const configJson = JSON.stringify({
-            id: profile.id, name: profile.name, provider: profile.provider, model: profile.model,
-            config: profile.config || { maxTokens: 1500, temperature: 0.7, schedule: { tf15m: [1, 16, 31, 46], tf1mInterval: 2 } }
-        }, null, 2);
+        // Container for TradingConfigPanel — rendered after DOM insertion
         return `
-            <div class="profile-config"><div class="profile-config__editor"><div class="json-editor">
-                <textarea class="json-editor__textarea" id="profile-config-editor" spellcheck="false"
-                          onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" oninput="ApexViewRenderer.onConfigChange()">${configJson}</textarea>
-                <div class="json-editor__actions">
-                    <span class="json-editor__status" id="config-status"></span>
+            <div class="profile-config" style="display:flex; flex-direction:column; height:100%; overflow:hidden;">
+                <div id="tcp-container" style="flex:1; overflow-y:auto; overflow-x:hidden; padding:2px;"></div>
+                <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:8px 12px; border-top:1px solid rgba(74,222,170,0.12); background:rgba(14,16,20,0.9);">
+                    <span id="config-status" style="font-size:10px; color:#8A8070; margin-right:auto;"></span>
                     <button type="button" class="json-editor__btn json-editor__btn--secondary" onclick="event.stopPropagation(); ApexViewRenderer.resetConfig()">Reset</button>
                     <button type="button" class="json-editor__btn" onclick="event.stopPropagation(); ApexViewRenderer.saveConfig()">Save Config</button>
                 </div>
-            </div></div></div>
+            </div>
         `;
     },
     
@@ -330,50 +344,85 @@ const ApexViewRenderer = {
         const statsPage = document.getElementById('profile-stats-page');
         const configPage = document.getElementById('profile-config-page');
         if (statsPage) statsPage.innerHTML = this.renderProfileStatsContent();
-        if (configPage) configPage.innerHTML = this.renderProfileConfigContent();
+        if (configPage) {
+            configPage.innerHTML = this.renderProfileConfigContent();
+            this._initConfigPanel();
+        }
+    },
+
+    /** Initialize TradingConfigPanel into #tcp-container with active profile's trading_config */
+    _initConfigPanel() {
+        const container = document.getElementById('tcp-container');
+        if (!container || typeof TradingConfigPanel === 'undefined') return;
+
+        const profile = this.getSelectedLocalProfile();
+        let config = null;
+
+        if (profile) {
+            // trading_config comes as a JSON string from the DB
+            const tc = profile.trading_config;
+            if (tc) {
+                try {
+                    config = typeof tc === 'string' ? JSON.parse(tc) : tc;
+                } catch (e) {
+                    console.warn('[ApexViews] Failed to parse trading_config:', e);
+                }
+            }
+        }
+
+        // Fallback to defaults
+        if (!config || !config.sentiment_weights) {
+            config = typeof TorraTraderBridge !== 'undefined'
+                ? TorraTraderBridge.DEFAULT_TRADING_CONFIG
+                : TradingConfigPanel._getDefault();
+        }
+
+        TradingConfigPanel.render('tcp-container', config);
     },
     
     onConfigChange() {
-        const textarea = document.getElementById('profile-config-editor');
-        const status = document.getElementById('config-status');
-        if (!textarea) return;
-        try {
-            JSON.parse(textarea.value);
-            textarea.style.border = '1px solid rgba(74, 222, 170, 0.2)';
-            if (status) { status.textContent = 'Valid JSON'; status.className = 'json-editor__status'; }
-        } catch (e) {
-            textarea.style.border = '1px solid #f87171';
-            if (status) { status.textContent = 'Invalid JSON'; status.className = 'json-editor__status json-editor__status--error'; }
-        }
+        // No-op — TradingConfigPanel handles its own validation via tcp:change events
     },
     
-    saveConfig() {
-        const textarea = document.getElementById('profile-config-editor');
+    async saveConfig() {
         const status = document.getElementById('config-status');
-        if (!textarea) return;
+        if (typeof TradingConfigPanel === 'undefined') return;
+
+        const config = TradingConfigPanel.getConfig();
+        const profile = this.getSelectedLocalProfile();
+        if (!profile || !config) return;
+
         try {
-            const configData = JSON.parse(textarea.value);
-            const profile = this.getSelectedLocalProfile();
-            if (profile && typeof ProfileManager !== 'undefined') {
-                ProfileManager.updateProfile(profile.id, { config: configData.config });
-                if (status) { status.textContent = '✓ Saved!'; status.className = 'json-editor__status json-editor__status--saved'; setTimeout(() => status.textContent = '', 2000); }
+            // Save trading_config (snake_case) to backend via ProfileManager
+            if (typeof ProfileManager !== 'undefined') {
+                await ProfileManager.updateProfile(profile.id, { trading_config: config });
+            }
+            if (status) {
+                status.textContent = '✓ Saved';
+                status.style.color = '#5CB85C';
+                setTimeout(() => { status.textContent = ''; }, 2000);
             }
         } catch (e) {
-            if (status) { status.textContent = 'Error: Invalid JSON'; status.className = 'json-editor__status json-editor__status--error'; }
+            console.error('[ApexViews] saveConfig error:', e);
+            if (status) {
+                status.textContent = 'Save failed';
+                status.style.color = '#D9534F';
+            }
         }
     },
     
     resetConfig() {
-        const profile = this.getSelectedLocalProfile();
-        if (!profile) return;
-        const configJson = JSON.stringify({
-            id: profile.id, name: profile.name, provider: profile.provider, model: profile.model,
-            config: profile.config || { maxTokens: 1500, temperature: 0.7, schedule: { tf15m: [1, 16, 31, 46], tf1mInterval: 2 } }
-        }, null, 2);
-        const textarea = document.getElementById('profile-config-editor');
-        if (textarea) { textarea.value = configJson; textarea.style.border = ''; }
+        if (typeof TradingConfigPanel === 'undefined') return;
+        const defaults = typeof TorraTraderBridge !== 'undefined'
+            ? TorraTraderBridge.DEFAULT_TRADING_CONFIG
+            : TradingConfigPanel._getDefault();
+        TradingConfigPanel.setConfig(defaults);
         const status = document.getElementById('config-status');
-        if (status) { status.textContent = 'Reset'; status.className = 'json-editor__status'; setTimeout(() => status.textContent = '', 1500); }
+        if (status) {
+            status.textContent = 'Reset to defaults';
+            status.style.color = '#8A8070';
+            setTimeout(() => { status.textContent = ''; }, 1500);
+        }
     },
     
     /* ═══════════════════════════════════════════════════════════════════════
@@ -447,10 +496,13 @@ const ApexViewRenderer = {
        ═══════════════════════════════════════════════════════════════════════ */
     renderTradingView(tab) {
         this.restoreApexLayout();
-        let tabSymbol = tab.dbKey || this.activeSymbol;
+        // Resolve the database symbol key for this tab
+        let tabSymbol = tab.dbKey || tab.symbol || tab.dbSymbol || this.activeSymbol;
+        // If still a trading view ID, fall back to active
         if (tabSymbol.startsWith('tr_')) tabSymbol = tab.symbol || tab.dbSymbol || this.activeSymbol;
-        if (tabSymbol && !tabSymbol.startsWith('tr_')) tabSymbol = tabSymbol.toUpperCase();
-        else tabSymbol = this.activeSymbol;
+        // Strip .sim suffix — backend expects bare symbol ID (e.g., 'USOILH26' not 'USOILH26.sim')
+        if (tabSymbol && tabSymbol.toLowerCase().endsWith('.sim')) tabSymbol = tabSymbol.slice(0, -4);
+        tabSymbol = (tabSymbol && !tabSymbol.startsWith('tr_')) ? tabSymbol.toUpperCase() : this.activeSymbol;
         
         if (tabSymbol !== this.activeSymbol) {
             this.chartData = { '15m': null, '1h': null };
@@ -791,9 +843,35 @@ const ApexViewRenderer = {
             if (this.isTraderRunning) {
                 console.log('[APEX] Trader STARTED');
                 if (typeof ApexSentiment !== 'undefined') ApexSentiment.startEngine(this.activeSymbol, true);
+                // Seed 16: Start THIS symbol's independent instance process
+                const symbolKey = this._getSymbolKey(this.activeSymbol);
+                fetch(`/api/instance/${symbolKey}/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: 'SIM' })
+                })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success) {
+                        console.log(`[APEX] ✓ Instance started: ${symbolKey} (PID ${d.instance?.pid})`);
+                    } else {
+                        console.warn(`[APEX] Instance start failed: ${d.error}`);
+                    }
+                    if (window.CytoBaseStatus) window.CytoBaseStatus.refresh();
+                })
+                .catch(e => console.error('[APEX] Instance start error:', e));
             } else {
                 console.log('[APEX] Trader STOPPED');
                 if (typeof ApexSentiment !== 'undefined') ApexSentiment.stopEngine();
+                // Seed 16: Stop THIS symbol's independent instance process
+                const symbolKey = this._getSymbolKey(this.activeSymbol);
+                fetch(`/api/instance/${symbolKey}/stop`, { method: 'POST' })
+                .then(r => r.json())
+                .then(d => {
+                    console.log(`[APEX] ✓ Instance stopped: ${symbolKey}`);
+                    if (window.CytoBaseStatus) window.CytoBaseStatus.refresh();
+                })
+                .catch(e => console.error('[APEX] Instance stop error:', e));
             }
         } else if (mode === 'replay' && prevMode === 'replay') {
             this.isReplayRunning = !this.isReplayRunning;
@@ -1231,6 +1309,23 @@ const ApexViewRenderer = {
         if (this.clockInterval) { clearInterval(this.clockInterval); this.clockInterval = null; }
         Object.keys(this.refreshIntervals).forEach(tf => { if (this.refreshIntervals[tf]) { clearInterval(this.refreshIntervals[tf]); this.refreshIntervals[tf] = null; } });
         if (this._resizeHandler) { window.removeEventListener('resize', this._resizeHandler); this._resizeHandler = null; }
+    },
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       SEED 16: Symbol Key Mapper
+       Maps MT5 symbol names to asset class keys for instance process mgmt
+       ═══════════════════════════════════════════════════════════════════════ */
+    _getSymbolKey(symbol) {
+        const map = {
+            'BTCF26': 'BTC', 'BTCUSD': 'BTC', 'BTC': 'BTC',
+            'USOILH26': 'OIL', 'USOIL': 'OIL', 'OIL': 'OIL',
+            'XAUJ26': 'GOLD', 'XAUUSD': 'GOLD', 'GOLD': 'GOLD',
+            'US100H26': 'US100', 'US100': 'US100', 'NAS100': 'US100',
+            'US30H26': 'US30', 'US30': 'US30', 'DJ30': 'US30',
+            'US500H26': 'US500', 'US500': 'US500', 'SP500': 'US500',
+        };
+        const upper = (symbol || '').toUpperCase();
+        return map[upper] || upper.replace(/[^A-Z0-9]/g, '').substring(0, 5);
     }
 };
 

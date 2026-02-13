@@ -1,0 +1,34 @@
+{
+  "_README": "This is the trading config that attaches to a frontend profile. Add this as 'tradingConfig' when creating/editing a profile in the Profile Manager. These values flow to the backend when the trader is activated.",
+
+  "sentiment_weights": {
+    "price_action": 0.30,
+    "key_levels":   0.15,
+    "momentum":     0.25,
+    "volume":       0.10,
+    "structure":    0.20
+  },
+
+  "timeframe_weights": {
+    "15m": 0.40,
+    "1h":  0.60
+  },
+
+  "thresholds": {
+    "buy":       0.55,
+    "sell":     -0.55,
+    "dead_zone": 0.25,
+    "gut_veto":  0.30
+  },
+
+  "risk": {
+    "base_lots":             1.0,
+    "max_lots":              1.0,
+    "stop_loss_points":      80,
+    "take_profit_points":    200,
+    "max_signals_per_hour":  3,
+    "cooldown_seconds":      300,
+    "consecutive_loss_halt": 2,
+    "sentiment_exit":        true
+  }
+}

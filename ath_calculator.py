@@ -196,6 +196,171 @@ def calculate_ath_data(
 
 
 # ============================================================================
+# ATH SCORE FOR TORRA TRADER (Seed 19 — Database-Injected Vector)
+# ============================================================================
+
+def calculate_ath_score(symbol: str, lookback: int = 500) -> dict:
+    """
+    Calculate ATH score for a symbol by reading its intelligence DB.
+    Returns a -1.0 to +1.0 score based on percentile rank of current
+    ATH distance within the lookback window.
+    
+    This is the 5th sentiment vector — deterministic, not AI-assessed.
+    
+    Returns:
+        dict with keys: score, percentile, distance_pct, zone, note
+    """
+    import sqlite3
+    import os
+    
+    try:
+        from config import SYMBOL_DATABASES, BASE_DIR
+    except ImportError:
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        SYMBOL_DATABASES = {}
+    
+    # Resolve intelligence DB path
+    sym_config = SYMBOL_DATABASES.get(symbol, {})
+    db_path = sym_config.get('db_path')
+    
+    if not db_path:
+        # Fallback: construct from symbol name
+        db_path = os.path.join(BASE_DIR, f"{symbol}_intelligence.db")
+    
+    if not os.path.exists(db_path):
+        return {
+            "score": 0.0,
+            "percentile": 50.0,
+            "distance_pct": 0.0,
+            "zone": "UNKNOWN",
+            "note": f"Intelligence DB not found: {db_path}"
+        }
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Try ath_tracking table first (preferred — has pre-calculated data)
+        try:
+            cursor.execute("""
+                SELECT ath_distance_pct FROM ath_tracking
+                ORDER BY rowid DESC LIMIT ?
+            """, (lookback,))
+            rows = cursor.fetchall()
+        except Exception:
+            rows = []
+        
+        if not rows:
+            # Fallback: calculate from price_data_15m highs
+            try:
+                cursor.execute("""
+                    SELECT high, close FROM price_data_15m
+                    ORDER BY timestamp DESC LIMIT ?
+                """, (lookback,))
+                price_rows = cursor.fetchall()
+                conn.close()
+                
+                if not price_rows or len(price_rows) < 10:
+                    return {
+                        "score": 0.0,
+                        "percentile": 50.0,
+                        "distance_pct": 0.0,
+                        "zone": "INSUFFICIENT_DATA",
+                        "note": f"Only {len(price_rows) if price_rows else 0} bars available"
+                    }
+                
+                import numpy as np
+                highs = np.array([r['high'] for r in reversed(price_rows)])
+                current_close = price_rows[0]['close']  # Most recent
+                
+                ath_data = calculate_ath_data(highs, current_close, lookback)
+                distance_pct = ath_data['ath_distance_pct']
+                
+                # Calculate percentile of current distance within lookback
+                # We need historical distances to rank against
+                distances = []
+                for i in range(min(len(highs), lookback)):
+                    h_slice = highs[:i+1]
+                    local_ath = np.max(h_slice)
+                    if local_ath > 0:
+                        d = ((highs[i] - local_ath) / local_ath) * 100
+                        distances.append(d)
+                
+                if distances:
+                    percentile = (sum(1 for d in distances if d <= distance_pct) / len(distances)) * 100
+                else:
+                    percentile = 50.0
+                
+                score = _percentile_to_score(percentile)
+                zone = classify_ath_zone(distance_pct)
+                
+                return {
+                    "score": round(score, 4),
+                    "percentile": round(percentile, 1),
+                    "distance_pct": round(distance_pct, 4),
+                    "zone": zone,
+                    "note": f"{zone}: {distance_pct:+.2f}% from ATH ({percentile:.0f}th percentile)"
+                }
+                
+            except Exception as e:
+                conn.close()
+                return {
+                    "score": 0.0,
+                    "percentile": 50.0,
+                    "distance_pct": 0.0,
+                    "zone": "ERROR",
+                    "note": f"Price data fallback failed: {e}"
+                }
+        
+        # We have ath_tracking rows — calculate percentile
+        conn.close()
+        
+        distances = [float(r['ath_distance_pct']) for r in rows]
+        current_distance = distances[0]  # Most recent
+        
+        # Percentile: what % of historical distances is current distance >= to
+        percentile = (sum(1 for d in distances if d <= current_distance) / len(distances)) * 100
+        
+        score = _percentile_to_score(percentile)
+        zone = classify_ath_zone(current_distance)
+        
+        return {
+            "score": round(score, 4),
+            "percentile": round(percentile, 1),
+            "distance_pct": round(current_distance, 4),
+            "zone": zone,
+            "note": f"{zone}: {current_distance:+.2f}% from ATH ({percentile:.0f}th percentile)"
+        }
+        
+    except Exception as e:
+        return {
+            "score": 0.0,
+            "percentile": 50.0,
+            "distance_pct": 0.0,
+            "zone": "ERROR",
+            "note": f"ATH calculation error: {e}"
+        }
+
+
+def _percentile_to_score(percentile: float) -> float:
+    """
+    Map percentile rank to -1.0 / +1.0 score.
+    
+    Higher percentile = closer to ATH = more bullish.
+      Top 10%  (90-100) → +0.6 to +1.0
+      Top 25%  (75-90)  → +0.2 to +0.6
+      Middle   (25-75)  → -0.2 to +0.2
+      Lower 25% (10-25) → -0.6 to -0.2
+      Bottom 10% (0-10) → -1.0 to -0.6
+    """
+    # Linear mapping: 0th percentile = -1.0, 100th percentile = +1.0
+    # With slight compression at extremes for realism
+    score = (percentile / 50.0) - 1.0  # Maps 0→-1, 50→0, 100→+1
+    return max(-1.0, min(1.0, score))
+
+
+# ============================================================================
 # TESTING & VALIDATION
 # ============================================================================
 

@@ -865,3 +865,101 @@
     background: rgba(251, 191, 36, 0.15);
     color: #fbbf24;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SEED 18: CELL-TAP DRILL-DOWN POPOVER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.score-tap {
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.score-tap:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.score-header {
+    cursor: pointer;
+    transition: color 0.12s ease;
+}
+
+.score-header:hover {
+    color: #5eead4;
+}
+
+.score-popover {
+    position: fixed;
+    z-index: 10001;
+    min-width: 200px;
+    max-width: 280px;
+    padding: 12px 14px;
+    background: #141424;
+    border: 1px solid rgba(94, 234, 212, 0.2);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 1px rgba(94, 234, 212, 0.15);
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    font-size: 11px;
+    color: #c8ccd0;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    pointer-events: auto;
+}
+
+.score-popover--visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.pop-title {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #5eead4;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pop-desc {
+    font-size: 10px;
+    color: #8a8f98;
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+.pop-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    gap: 12px;
+}
+
+.pop-row--total { padding-top: 4px; }
+
+.pop-label {
+    color: #6b7280;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.pop-value {
+    color: #e0e0e0;
+    font-size: 11px;
+    font-weight: 500;
+    text-align: right;
+}
+
+.pop-value--lg { font-size: 13px; font-weight: 700; }
+.pop-value--signal { font-weight: 700; color: #5eead4; }
+.pop-bull { color: #22c55e; }
+.pop-bear { color: #ef4444; }
+
+.pop-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 6px 0;
+}

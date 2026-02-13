@@ -1,0 +1,566 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   TRADING CONFIG PANEL — TradingView-Style Neomorphic Inputs
+   
+   Replaces the raw JSON textarea with organized, scrollable sections:
+   - Sentiment Weights (auto-normalizing sliders + distribution bar)
+   - Timeframe Weights (dual slider)
+   - Entry Thresholds (number steppers)
+   - Risk & Exit Strategy (steppers + toggles)
+   
+   Theme: Matte Black/Grey + Teal/Mint neomorphic
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Panel Container ────────────────────────────────────────────────────── */
+
+.tcp {
+    --tcp-bg: #0E1014;
+    --tcp-surface: #151820;
+    --tcp-surface-raised: #1A1E28;
+    --tcp-surface-inset: #0A0C10;
+    --tcp-accent: #4ADEAA;
+    --tcp-accent-dim: rgba(74, 222, 170, 0.30);
+    --tcp-accent-glow: rgba(74, 222, 170, 0.10);
+    --tcp-accent-muted: rgba(74, 222, 170, 0.50);
+    --tcp-text: #D0D0D0;
+    --tcp-text-dim: #808890;
+    --tcp-text-muted: #505560;
+    --tcp-border: rgba(255, 255, 255, 0.06);
+    --tcp-border-light: rgba(255, 255, 255, 0.03);
+    --tcp-red: #E05555;
+    --tcp-green: #4ADEAA;
+    --tcp-blue: #5BC0DE;
+    
+    /* Neomorphic shadows — matte black */
+    --tcp-shadow-out: 
+        3px 3px 8px rgba(0, 0, 0, 0.6),
+        -2px -2px 6px rgba(255, 255, 255, 0.015);
+    --tcp-shadow-in:
+        inset 2px 2px 6px rgba(0, 0, 0, 0.5),
+        inset -1px -1px 3px rgba(255, 255, 255, 0.015);
+    --tcp-shadow-subtle:
+        1px 1px 3px rgba(0, 0, 0, 0.4),
+        -1px -1px 2px rgba(255, 255, 255, 0.01);
+
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    font-size: 11px;
+    color: var(--tcp-text);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--tcp-bg);
+    border: 1px solid var(--tcp-border);
+}
+
+/* ─── Section ────────────────────────────────────────────────────────────── */
+
+.tcp-section {
+    background: var(--tcp-surface);
+    border-bottom: 1px solid var(--tcp-border-light);
+    overflow: hidden;
+    transition: background 0.2s ease;
+}
+
+.tcp-section:last-child {
+    border-bottom: none;
+}
+
+.tcp-section:hover {
+    background: var(--tcp-surface-raised);
+}
+
+/* Section Header — clickable collapse toggle */
+.tcp-section__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+}
+
+.tcp-section__header:hover {
+    background: rgba(74, 222, 170, 0.03);
+}
+
+.tcp-section__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--tcp-accent);
+}
+
+.tcp-section__icon {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-size: 10px;
+    background: var(--tcp-accent-glow);
+    color: var(--tcp-accent);
+}
+
+.tcp-section__chevron {
+    font-size: 9px;
+    color: var(--tcp-text-muted);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tcp-section--collapsed .tcp-section__chevron {
+    transform: rotate(-90deg);
+}
+
+/* Section Body — collapsible content */
+.tcp-section__body {
+    padding: 0 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 600px;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.2s ease;
+}
+
+.tcp-section--collapsed .tcp-section__body {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+}
+
+/* ─── Weight Distribution Bar ─────────────────────────────────────────── */
+
+.tcp-weight-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--tcp-surface-inset);
+    box-shadow: var(--tcp-shadow-in);
+    display: flex;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.tcp-weight-bar__segment {
+    height: 100%;
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.tcp-weight-bar__segment:first-child { border-radius: 3px 0 0 3px; }
+.tcp-weight-bar__segment:last-child { border-radius: 0 3px 3px 0; }
+
+/* Muted teal/mint palette for weight segments */
+.tcp-weight-bar__segment--price_action { background: #4ADEAA; }
+.tcp-weight-bar__segment--key_levels   { background: #5BC0DE; }
+.tcp-weight-bar__segment--momentum     { background: #7EE8C7; }
+.tcp-weight-bar__segment--volume       { background: #3B9B7A; }
+.tcp-weight-bar__segment--structure    { background: #A78BFA; }
+
+.tcp-weight-bar__segment--15m { background: var(--tcp-accent); }
+.tcp-weight-bar__segment--1h  { background: var(--tcp-blue); }
+
+/* ─── Input Row (Label + Control) ─────────────────────────────────────── */
+
+.tcp-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 28px;
+}
+
+.tcp-row__label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--tcp-text-dim);
+    white-space: nowrap;
+}
+
+.tcp-row__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.tcp-row__dot--price_action { background: #4ADEAA; }
+.tcp-row__dot--key_levels   { background: #5BC0DE; }
+.tcp-row__dot--momentum     { background: #7EE8C7; }
+.tcp-row__dot--volume       { background: #3B9B7A; }
+.tcp-row__dot--structure    { background: #A78BFA; }
+
+.tcp-row__control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* ─── Custom Range Slider ─────────────────────────────────────────────── */
+
+.tcp-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.tcp-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--tcp-surface-inset);
+    box-shadow: var(--tcp-shadow-in);
+    outline: none;
+    cursor: pointer;
+    min-width: 60px;
+}
+
+.tcp-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--tcp-accent);
+    border: 2px solid var(--tcp-surface);
+    box-shadow: 0 0 6px var(--tcp-accent-dim),
+                0 1px 3px rgba(0,0,0,0.5);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tcp-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 12px var(--tcp-accent-dim),
+                0 2px 6px rgba(0,0,0,0.6);
+}
+
+.tcp-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--tcp-accent);
+    border: 2px solid var(--tcp-surface);
+    box-shadow: 0 0 6px var(--tcp-accent-dim);
+    cursor: pointer;
+}
+
+.tcp-slider::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--tcp-surface-inset);
+}
+
+/* Slider value display */
+.tcp-slider__value {
+    min-width: 36px;
+    text-align: right;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--tcp-text);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─── Number Stepper ──────────────────────────────────────────────────── */
+
+.tcp-stepper {
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+    background: var(--tcp-surface-inset);
+    box-shadow: var(--tcp-shadow-in);
+    overflow: hidden;
+    border: 1px solid var(--tcp-border-light);
+}
+
+.tcp-stepper__btn {
+    width: 24px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--tcp-text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.12s ease;
+    user-select: none;
+}
+
+.tcp-stepper__btn:hover {
+    background: var(--tcp-accent-glow);
+    color: var(--tcp-accent);
+}
+
+.tcp-stepper__btn:active {
+    background: var(--tcp-accent-dim);
+    color: var(--tcp-accent);
+}
+
+.tcp-stepper__input {
+    width: 50px;
+    height: 26px;
+    text-align: center;
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--tcp-border-light);
+    border-right: 1px solid var(--tcp-border-light);
+    color: var(--tcp-text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    outline: none;
+    font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield;
+}
+
+.tcp-stepper__input::-webkit-inner-spin-button,
+.tcp-stepper__input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.tcp-stepper__input:focus {
+    background: rgba(74, 222, 170, 0.04);
+}
+
+.tcp-stepper__unit {
+    padding: 0 6px;
+    font-size: 9px;
+    color: var(--tcp-text-muted);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+/* Wide variant for larger numbers */
+.tcp-stepper--wide .tcp-stepper__input {
+    width: 64px;
+}
+
+/* ─── Toggle Switch ───────────────────────────────────────────────────── */
+
+.tcp-toggle {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.tcp-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.tcp-toggle__track {
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    background: var(--tcp-surface-inset);
+    box-shadow: var(--tcp-shadow-in);
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.tcp-toggle input:checked + .tcp-toggle__track {
+    background: var(--tcp-accent-dim);
+    box-shadow: inset 0 0 8px rgba(74, 222, 170, 0.15);
+}
+
+.tcp-toggle__thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--tcp-text-muted);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                background 0.25s ease;
+}
+
+.tcp-toggle input:checked ~ .tcp-toggle__thumb {
+    transform: translateX(16px);
+    background: var(--tcp-accent);
+    box-shadow: 0 0 6px var(--tcp-accent-dim),
+                0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Divider ─────────────────────────────────────────────────────────── */
+
+.tcp-divider {
+    height: 1px;
+    background: var(--tcp-border);
+    margin: 4px 0;
+}
+
+/* ─── Total / Sum Row ─────────────────────────────────────────────────── */
+
+.tcp-total-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0 0;
+    border-top: 1px solid var(--tcp-border);
+}
+
+.tcp-total-row__label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--tcp-text-muted);
+}
+
+.tcp-total-row__value {
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.tcp-total-row__value--ok { color: var(--tcp-green); }
+.tcp-total-row__value--warn { color: var(--tcp-red); }
+
+/* ─── Threshold visual indicator ──────────────────────────────────────── */
+
+.tcp-threshold-bar {
+    position: relative;
+    height: 24px;
+    border-radius: 4px;
+    background: var(--tcp-surface-inset);
+    box-shadow: var(--tcp-shadow-in);
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.tcp-threshold-bar__zone {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    transition: all 0.3s ease;
+}
+
+.tcp-threshold-bar__zone--sell {
+    left: 0;
+    background: linear-gradient(90deg, rgba(224, 85, 85, 0.25), rgba(224, 85, 85, 0.08));
+    border-right: 1px solid rgba(224, 85, 85, 0.35);
+}
+
+.tcp-threshold-bar__zone--dead {
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 1px dashed rgba(255,255,255,0.06);
+    border-right: 1px dashed rgba(255,255,255,0.06);
+}
+
+.tcp-threshold-bar__zone--buy {
+    right: 0;
+    background: linear-gradient(90deg, rgba(74, 222, 170, 0.08), rgba(74, 222, 170, 0.25));
+    border-left: 1px solid rgba(74, 222, 170, 0.35);
+}
+
+.tcp-threshold-bar__marker {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: var(--tcp-accent);
+    box-shadow: 0 0 4px var(--tcp-accent-dim);
+}
+
+.tcp-threshold-bar__label {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    pointer-events: none;
+}
+
+.tcp-threshold-bar__label--sell {
+    left: 6px;
+    color: rgba(224, 85, 85, 0.5);
+}
+
+.tcp-threshold-bar__label--dead {
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.12);
+}
+
+.tcp-threshold-bar__label--buy {
+    right: 6px;
+    color: rgba(74, 222, 170, 0.5);
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────── */
+
+@media (max-width: 400px) {
+    .tcp-row {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .tcp-slider-wrap {
+        width: 100%;
+    }
+}
+
+/* ─── Animations ──────────────────────────────────────────────────────── */
+
+@keyframes tcp-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.tcp-section__body > * {
+    animation: tcp-fade-in 0.2s ease both;
+}
+
+.tcp-section__body > *:nth-child(1) { animation-delay: 0.02s; }
+.tcp-section__body > *:nth-child(2) { animation-delay: 0.04s; }
+.tcp-section__body > *:nth-child(3) { animation-delay: 0.06s; }
+.tcp-section__body > *:nth-child(4) { animation-delay: 0.08s; }
+.tcp-section__body > *:nth-child(5) { animation-delay: 0.10s; }
+.tcp-section__body > *:nth-child(6) { animation-delay: 0.12s; }
+.tcp-section__body > *:nth-child(7) { animation-delay: 0.14s; }
+.tcp-section__body > *:nth-child(8) { animation-delay: 0.16s; }
+.tcp-section__body > *:nth-child(9) { animation-delay: 0.18s; }
+
+/* ─── Scrollbar for config panel container ─────────────────────────────── */
+
+#tcp-container::-webkit-scrollbar {
+    width: 5px;
+}
+
+#tcp-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#tcp-container::-webkit-scrollbar-thumb {
+    background: rgba(74, 222, 170, 0.15);
+    border-radius: 3px;
+}
+
+#tcp-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(74, 222, 170, 0.3);
+}

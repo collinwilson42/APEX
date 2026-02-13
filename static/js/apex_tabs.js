@@ -670,12 +670,25 @@ const ApexTabRenderer = {
                 } catch (e) {}
             }
             
+            // For trading views, resolve the actual database symbol key
+            let resolvedDbKey = btn.dataset.id;
+            if (type === 'trading') {
+                // Trading view IDs are 'tr_xxx' — look up the real symbolId
+                const views = this.getSavedTradingViews();
+                const view = views.find(v => v.id === btn.dataset.id);
+                resolvedDbKey = (view && view.symbolId) || btn.dataset.symbol || btn.dataset.id;
+                // Strip .sim suffix if present
+                if (resolvedDbKey && resolvedDbKey.toLowerCase().endsWith('.sim')) {
+                    resolvedDbKey = resolvedDbKey.slice(0, -4);
+                }
+            }
+            
             ApexTabs.create({
                 title: btn.dataset.name,
                 instanceType: type,
                 instanceId: btn.dataset.id,
                 symbol: btn.dataset.symbol || null,
-                dbKey: btn.dataset.id
+                dbKey: resolvedDbKey
             });
         }
         this.hideDropdown();
