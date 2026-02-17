@@ -1,0 +1,42 @@
+
+════════════════════════════════════════════════════════════
+  🔷 TORRA TRADER v3.0 — MULTI-AGENT DECISION FRAMEWORK
+  Instance:  tr_1771023001488
+  Symbol:    XAUJ26.SIM
+  Profile:   XAUJ26.SIM Trading Profile (6bd1dfe7-824)
+  Model:     claude-sonnet-4-20250514
+  Threshold: ±0.5
+  Weights:   PA:0.12 KL:0.16 MOM:0.28 ATH:0.10 STR:0.34
+  TF Blend:  15m:0.40 | 1h:0.60
+  Lot Size:  1
+  Signal:    C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+  Agents:    BUDGET mode (4 agents)
+             technical, bull_researcher, bear_researcher, risk_gate
+════════════════════════════════════════════════════════════
+
+  Schedule:  15m@(1, 16, 31, 46) | 1h@(2,)
+  🚀 Immediate first tick (--run-now)...
+
+──── 15M TICK @ 12:04 ────────────────────────────────────────
+  Config: BUY>=+0.500  SELL<=-0.500  lots=1  cd=30s
+  📸 Screenshot captured (317KB) fullscreen
+  ⚔️  Agent Debate (budget mode)...
+2026-02-14 12:05:03,807 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-14 12:05:03,841 [INFO]   🔹 technical: conf=low flags=['no_chart_visible', 'log_output_instead_of_chart', 'unable_to_perform_technical_analysis']
+2026-02-14 12:05:08,589 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-14 12:05:08,589 [INFO]   🐂 Bull: conf=low strongest=price_action
+2026-02-14 12:05:13,039 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-14 12:05:13,039 [INFO]   🐻 Bear: conf=low weakest=structure
+2026-02-14 12:05:16,984 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-14 12:05:16,984 [INFO]   🛡️  Risk: level=extreme veto=True
+2026-02-14 12:05:16,984 [INFO]   ⚖️  Final: PA=-0.000 KL=-0.000 MOM=-0.000 STR=-0.000 | 16924ms | risk=extreme
+  ⚔️  Debate complete
+  🤖 Agent Debate (AGENT_DEBATE) → 4 vectors (16924ms)
+     PA:-0.00  KL:-0.00  MOM:-0.00  STR:-0.00
+  📊 ATH score: -0.14 (43th pctl, MID_RANGE)
+[SentimentDB] 15m | composite=-0.014 consensus=-0.014 | HOLD ·
+  💾 DB verdict: composite=-0.014 | partner=-0.014 | consensus=-0.014
+  ⚪ HOLD | threshold: NOT MET ·
+  ⏸️  No signal — holding
+
+  💓 12:10 — waiting (next 15m tick at :16)

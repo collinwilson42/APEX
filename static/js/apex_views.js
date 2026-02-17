@@ -649,22 +649,17 @@ const ApexViewRenderer = {
         
         // Profile image or placeholder
         let imageHtml;
-        if (profile?.imagePath) {
-            imageHtml = `<img class="rtc-orb-img" src="${profile.imagePath}" alt="${profile.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        const imageSrc = profile?.image_path || profile?.imagePath;
+        if (imageSrc) {
+            imageHtml = `<img class="rtc-orb-img" src="${imageSrc}" alt="${profile.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
                          <div class="rtc-orb-placeholder" style="display:none;">${provider?.icon || '?'}</div>`;
         } else {
             imageHtml = `<div class="rtc-orb-placeholder">${provider?.icon || '?'}</div>`;
         }
         
-        // Rank badge
-        const rankBadge = rank > 0 
-            ? `<div class="rtc-rank-badge ${this.getRankBadgeClass(rank)}">${rank}</div>` 
-            : '';
-        
         return `
             ${imageHtml}
             <div class="rtc-orb-time" id="rtc-time">--:--</div>
-            ${rankBadge}
         `;
     },
     
@@ -697,6 +692,9 @@ const ApexViewRenderer = {
         const totalProfiles = ProfileManager.profiles.length;
         this.tradingProfileIndex = (this.tradingProfileIndex + direction + totalProfiles) % totalProfiles;
         this.tradingProfileId = ProfileManager.profiles[this.tradingProfileIndex].id;
+        
+        // Seed 18: Sync with ProfileManager so TorraTraderBridge can find active config
+        ProfileManager.setActiveProfile(this.tradingProfileId);
         
         // 3. Update UI
         this.updateProfileOrb();
@@ -748,8 +746,8 @@ const ApexViewRenderer = {
                 <div class="rtc-profile-row ${isActive ? 'rtc-profile-row--active' : ''}" 
                      onclick="ApexViewRenderer.selectTradingProfile('${profile.id}')">
                     <div class="rtc-profile-row__avatar">
-                        ${profile.imagePath 
-                            ? `<img src="${profile.imagePath}" alt="${profile.name}" />` 
+                        ${(profile.image_path || profile.imagePath)
+                            ? `<img src="${profile.image_path || profile.imagePath}" alt="${profile.name}" />` 
                             : `<div class="rtc-profile-row__placeholder">${provider?.icon || '?'}</div>`
                         }
                         <div class="rtc-profile-row__rank ${this.getRankBadgeClass(rank)}">${rank}</div>
@@ -794,6 +792,9 @@ const ApexViewRenderer = {
         // Update state
         this.tradingProfileId = profileId;
         this.tradingProfileIndex = index;
+        
+        // Seed 18: Also set as ProfileManager active profile so TorraTraderBridge can find it
+        ProfileManager.setActiveProfile(profileId);
         
         // Update UI
         this.updateProfileOrb();
@@ -841,37 +842,40 @@ const ApexViewRenderer = {
         if (mode === 'active' && prevMode === 'active') {
             this.isTraderRunning = !this.isTraderRunning;
             if (this.isTraderRunning) {
-                console.log('[APEX] Trader STARTED');
-                if (typeof ApexSentiment !== 'undefined') ApexSentiment.startEngine(this.activeSymbol, true);
-                // Seed 16: Start THIS symbol's independent instance process
-                const symbolKey = this._getSymbolKey(this.activeSymbol);
-                fetch(`/api/instance/${symbolKey}/start`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode: 'SIM' })
-                })
-                .then(r => r.json())
-                .then(d => {
-                    if (d.success) {
-                        console.log(`[APEX] ✓ Instance started: ${symbolKey} (PID ${d.instance?.pid})`);
-                    } else {
-                        console.warn(`[APEX] Instance start failed: ${d.error}`);
+                console.log('[APEX] Trader STARTING via TorraTraderBridge...');
+                
+                // Seed 18/19: Use TorraTraderBridge for real API scoring
+                const instanceId = (typeof ApexInstanceBrowser !== 'undefined' && ApexInstanceBrowser.currentInstanceId)
+                    ? ApexInstanceBrowser.currentInstanceId : null;
+                
+                if (!instanceId) {
+                    console.warn('[APEX] No instance selected — select an algorithm first');
+                    if (typeof TorraTraderBridge !== 'undefined') {
+                        TorraTraderBridge._showToast('Select an algorithm in the bottom-left panel first', 'error');
                     }
-                    if (window.CytoBaseStatus) window.CytoBaseStatus.refresh();
-                })
-                .catch(e => console.error('[APEX] Instance start error:', e));
+                    this.isTraderRunning = false;
+                } else if (typeof TorraTraderBridge !== 'undefined') {
+                    // This does pre-flight, config validation, and spawns torra_trader.py
+                    TorraTraderBridge.toggleTrader(instanceId, this.activeSymbol);
+                    // Sentiment panel starts via torra:trader:started event from bridge
+                } else {
+                    console.warn('[APEX] TorraTraderBridge not loaded');
+                    this.isTraderRunning = false;
+                }
+                
+                if (window.CytoBaseStatus) window.CytoBaseStatus.refresh();
             } else {
-                console.log('[APEX] Trader STOPPED');
+                console.log('[APEX] Trader STOPPING...');
+                
+                const instanceId = (typeof ApexInstanceBrowser !== 'undefined' && ApexInstanceBrowser.currentInstanceId)
+                    ? ApexInstanceBrowser.currentInstanceId : null;
+                
+                if (instanceId && typeof TorraTraderBridge !== 'undefined') {
+                    TorraTraderBridge.stopTrader(instanceId);
+                }
                 if (typeof ApexSentiment !== 'undefined') ApexSentiment.stopEngine();
-                // Seed 16: Stop THIS symbol's independent instance process
-                const symbolKey = this._getSymbolKey(this.activeSymbol);
-                fetch(`/api/instance/${symbolKey}/stop`, { method: 'POST' })
-                .then(r => r.json())
-                .then(d => {
-                    console.log(`[APEX] ✓ Instance stopped: ${symbolKey}`);
-                    if (window.CytoBaseStatus) window.CytoBaseStatus.refresh();
-                })
-                .catch(e => console.error('[APEX] Instance stop error:', e));
+                
+                if (window.CytoBaseStatus) window.CytoBaseStatus.refresh();
             }
         } else if (mode === 'replay' && prevMode === 'replay') {
             this.isReplayRunning = !this.isReplayRunning;

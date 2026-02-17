@@ -58,13 +58,26 @@ def validate_start_request(data: dict) -> dict:
     if not api_key:
         errors.append('api_key is required — configure in Profile Manager')
 
-    # Instance must exist in DB
+    # Instance must exist in DB — auto-create if missing (Seed 18: bridge localStorage ↔ DB)
     if instance_id:
         from instance_database import get_instance_db
         db = get_instance_db(os.path.join(BASE_DIR, 'apex_instances.db'))
         instance = db.get_instance(instance_id)
         if not instance:
-            errors.append(f'Instance not found: {instance_id}')
+            # Normalize symbol: strip .SIM suffix (Seed 20: Symbol Alignment)
+            raw_symbol = data.get('symbol', '').upper() or 'UNKNOWN'
+            symbol = raw_symbol[:-4] if raw_symbol.endswith('.SIM') else raw_symbol
+            try:
+                db.register_instance(
+                    instance_id=instance_id,
+                    symbol=symbol,
+                    account_type='SIM',
+                    display_name=f"{symbol} Trader",
+                    profile_id=data.get('profile_id', '')
+                )
+                logger.info(f"[validate_start_config] Auto-registered instance: {instance_id} ({symbol})")
+            except Exception as e:
+                errors.append(f'Instance not found and auto-register failed: {e}')
 
     # Trading config validation
     if trading_config:
@@ -91,33 +104,61 @@ def validate_start_request(data: dict) -> dict:
 # TRADER PROCESS MANAGER
 # ═══════════════════════════════════════════════════════════════════════════
 
+# Log directory for trader output
+LOG_DIR = os.path.join(BASE_DIR, 'logs', 'traders')
+os.makedirs(LOG_DIR, exist_ok=True)
+
+
 class TraderProcess:
     """Wraps a torra_trader.py subprocess."""
 
-    def __init__(self, instance_id: str, symbol: str, process: subprocess.Popen):
+    def __init__(self, instance_id: str, symbol: str, process: subprocess.Popen,
+                 log_path: str = None):
         self.instance_id = instance_id
         self.symbol = symbol
         self.process = process
         self.pid = process.pid
         self.started_at = datetime.now()
         self.state = 'running'
+        self.log_path = log_path
+        self._log_file = None  # kept open for subprocess lifetime
 
     def is_alive(self) -> bool:
         if self.process.poll() is None:
             return True
         self.state = 'crashed' if self.process.returncode != 0 else 'stopped'
+        # Close log file when process ends
+        if self._log_file and not self._log_file.closed:
+            self._log_file.close()
         return False
+
+    def get_tail(self, lines: int = 50) -> str:
+        """Read last N lines of the trader log file."""
+        if not self.log_path or not os.path.exists(self.log_path):
+            return ''
+        try:
+            with open(self.log_path, 'r', encoding='utf-8', errors='replace') as f:
+                all_lines = f.readlines()
+                return ''.join(all_lines[-lines:])
+        except Exception:
+            return ''
 
     def to_dict(self) -> dict:
         alive = self.is_alive()
-        return {
+        d = {
             'instance_id': self.instance_id,
             'symbol': self.symbol,
             'pid': self.pid,
             'state': 'running' if alive else self.state,
             'started_at': self.started_at.isoformat(),
             'runtime_seconds': round((datetime.now() - self.started_at).total_seconds(), 1),
+            'return_code': self.process.returncode,
+            'log_path': self.log_path,
         }
+        # Include last few log lines for crashed traders
+        if not alive and self.state == 'crashed':
+            d['last_output'] = self.get_tail(20)
+        return d
 
 
 class TraderManager:
@@ -163,20 +204,30 @@ class TraderManager:
 
             env['TORRA_API_KEY'] = api_key
             env['TORRA_PROVIDER'] = provider
+            env['PYTHONIOENCODING'] = 'utf-8'  # Critical: prevents emoji crash in log files
             if model:
                 env['TORRA_MODEL'] = model
 
             cmd = [
                 self.python_exe,
+                '-u',  # Unbuffered output — critical for log file flushing
                 self.trader_path,
                 '--instance-id', instance_id,
+                '--run-now',  # Seed 18: immediate first tick on activation
             ]
 
             try:
+                # ── Log file instead of PIPE (prevents buffer deadlock) ──
+                timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+                safe_id = instance_id.replace('-', '_')[:24]
+                log_filename = f"trader_{safe_id}_{timestamp_str}.log"
+                log_path = os.path.join(LOG_DIR, log_filename)
+                log_file = open(log_path, 'w', encoding='utf-8', buffering=1)
+
                 process = subprocess.Popen(
                     cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,  # merge stderr into stdout log
                     text=True,
                     cwd=BASE_DIR,
                     env=env,
@@ -186,15 +237,22 @@ class TraderManager:
 
                 time.sleep(0.5)
                 if process.poll() is not None:
-                    stdout, stderr = process.communicate(timeout=3)
+                    log_file.close()
+                    # Read what the process wrote before dying
+                    try:
+                        with open(log_path, 'r', encoding='utf-8') as f:
+                            crash_output = f.read()[-1000:]
+                    except Exception:
+                        crash_output = ''
                     return {
                         'success': False,
                         'error': 'Trader exited immediately — check profile config',
-                        'stdout': (stdout or '')[-500:],
-                        'stderr': (stderr or '')[-500:],
+                        'output': crash_output,
+                        'log_path': log_path,
                     }
 
-                trader = TraderProcess(instance_id, symbol, process)
+                trader = TraderProcess(instance_id, symbol, process, log_path=log_path)
+                trader._log_file = log_file  # keep reference so it stays open
                 self._traders[instance_id] = trader
 
                 logger.info(f"[TraderManager] ✓ Started trader for {instance_id} — PID {process.pid}")
@@ -506,6 +564,40 @@ def register_trader_routes(app):
 
         return jsonify(result)
 
+    @app.route('/api/trader/<instance_id>/log', methods=['GET'])
+    def api_trader_log(instance_id):
+        """Read trader log file — tail N lines (default 100)."""
+        tm = get_trader_manager()
+        lines = int(request.args.get('lines', 100))
+        
+        with tm._lock:
+            trader = tm._traders.get(instance_id)
+        
+        if not trader:
+            return jsonify({'success': False, 'error': 'Trader not found'}), 404
+        
+        log_text = trader.get_tail(lines)
+        return jsonify({
+            'success': True,
+            'instance_id': instance_id,
+            'log_path': trader.log_path,
+            'state': 'running' if trader.is_alive() else trader.state,
+            'lines': lines,
+            'output': log_text
+        })
+
+    @app.route('/api/trader/logs', methods=['GET'])
+    def api_trader_logs_list():
+        """List all trader log files."""
+        logs = []
+        if os.path.isdir(LOG_DIR):
+            for fname in sorted(os.listdir(LOG_DIR), reverse=True):
+                if fname.endswith('.log'):
+                    fpath = os.path.join(LOG_DIR, fname)
+                    size = os.path.getsize(fpath)
+                    logs.append({'filename': fname, 'size': size, 'path': fpath})
+        return jsonify({'success': True, 'logs': logs[:50]})
+
     # Clean up on shutdown
     def shutdown_traders():
         tm = get_trader_manager()
@@ -514,4 +606,4 @@ def register_trader_routes(app):
     atexit.register(shutdown_traders)
 
     print("✓ TORRA trader routes registered (v2.0 — Config-First)")
-    print("  Routes: /api/trader/start, /api/trader/stop, /api/trader/status, /api/trader/toggle")
+    print("  Routes: /api/trader/start, /api/trader/stop, /api/trader/status, /api/trader/toggle, /api/trader/<id>/log")

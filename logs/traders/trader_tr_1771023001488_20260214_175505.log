@@ -1,0 +1,32 @@
+
+============================================================
+  TORRA TRADER v3.1 — DUAL SCREENSHOT + MULTI-AGENT
+  Instance:  tr_1771023001488
+  Symbol:    XAUJ26.SIM
+  Profile:   XAUJ26.SIM Trading Profile (6bd1dfe7-824)
+  Model:     claude-sonnet-4-20250514
+  Threshold: +/-0.5
+  Weights:   PA:0.12 KL:0.16 MOM:0.28 ATH:0.10 STR:0.34
+  TF Blend:  15m:0.40 | 1h:0.60
+  Lot Size:  1
+  Signal:    C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+  Capture:   mss (per-timeframe regions)
+    15m:     left=1040, top=200, 1840x520
+    1h:      left=1040, top=710, 1840x500
+  Agents:    BUDGET mode (4 agents)
+             technical, bull_researcher, bear_researcher, risk_gate
+============================================================
+
+  Schedule:  15m@(1, 16, 31, 46) | 1h@(2,)
+  [run-now] Immediate first tick...
+
+---- 15M TICK @ 17:55 ────────────────────────────────────────
+  Config: BUY>=+0.500  SELL<=-0.500  lots=1  cd=30s
+  [capture] 15m chart via mss region (1040,200 1840x520)
+  [capture] Chart captured (195KB) via mss region
+2026-02-14 17:55:18,466 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  [score] Base -> PA:+0.60  KL:+0.40  MOM:+0.50  STR:+0.30
+  [agents] Debate (budget mode)...
+2026-02-14 17:55:23,400 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-14 17:55:23,400 [WARNING] [TechnicalAgent] JSON parse failed: Expecting value: line 4 column 25 (char 76)
+2026-02-14 17:55:23,400 [INFO]   🔹 technical: conf=low flags=['agent_error']

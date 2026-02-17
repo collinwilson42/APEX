@@ -143,9 +143,10 @@ const TorraTraderBridge = {
         if (!config || !config.apiKey) return null;
 
         return {
-            api_key:  config.apiKey,
-            provider: config.provider || 'anthropic',
-            model:    config.model || 'claude-sonnet-4-20250514'
+            api_key:    config.apiKey,
+            provider:   config.provider || 'anthropic',
+            model:      config.model || 'claude-sonnet-4-20250514',
+            profile_id: config.id || ''
         };
     },
 
@@ -193,7 +194,8 @@ const TorraTraderBridge = {
                     provider:       creds.provider,
                     model:          creds.model,
                     trading_config: tradingConfig,
-                    symbol:         symbol || ''
+                    symbol:         symbol || '',
+                    profile_id:     creds.profile_id || ''
                 })
             });
 

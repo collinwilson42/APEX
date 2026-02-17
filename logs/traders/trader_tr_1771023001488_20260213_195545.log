@@ -1,0 +1,104 @@
+
+════════════════════════════════════════════════════════════
+  🔷 TORRA TRADER v2.0 — CONFIG-FIRST EXECUTOR
+  Instance:  tr_1771023001488
+  Symbol:    XAUJ26.SIM
+  Profile:   XAUJ26.SIM Trading Profile (6bd1dfe7-824)
+  Model:     claude-sonnet-4-20250514
+  Threshold: BUY≥+0.050  SELL≤-0.050
+  Weights:   PA:0.12 KL:0.16 MOM:0.28 ATH:0.10 STR:0.34
+  TF Blend:  15m:0.40 | 1h:0.60
+  Risk:      lots=1 | cooldown=30s | max=10/hr
+  Signal:    C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+  Sig Dir:   ✓ exists
+════════════════════════════════════════════════════════════
+
+  Schedule:  15m@(1, 16, 31, 46) | 1h@(2,)
+  🚀 Immediate first tick (--run-now)...
+
+──── 15M TICK @ 19:55 ────────────────────────────────────────
+  📸 Screenshot captured (254KB)
+2026-02-13 19:56:02,151 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  🤖 Claude API → 4 visual vectors (5654ms)
+     PA:-0.10  KL:+0.00  MOM:-0.20  STR:-0.10
+  📊 ATH score: -0.14 (43th pctl, MID_RANGE)
+     ATH detail: MID_RANGE: -1.97% from ATH (43th pctl, 500 bars)
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=-0.116 consensus=-0.294 | SELL ✓
+  💾 DB verdict: composite=-0.116 | partner=-0.412 | consensus=-0.294
+  🔴 SELL | threshold: MET ✓
+  📤 EXECUTE: SELL signal — checking gates...
+     Rate limit: 0/10 ✓
+     Cooldown: first signal ✓
+     Signal JSON: {"action": "SELL", "symbol": "XAUJ26.SIM.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter1"}
+     Writing to:  C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+2026-02-13 19:56:02,232 [INFO] 📝 SIGNAL → C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt: {"action": "SELL", "symbol": "XAUJ26.SIM.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter1"}
+  ✅ SIGNAL WRITTEN → EA should pick up within 100ms
+     SELL 1 XAUJ26.SIM.sim | signals: 1/10
+
+  💓 20:00 — waiting (next 15m tick at :01)
+
+──── 15M TICK @ 20:01 ────────────────────────────────────────
+  📸 Screenshot captured (334KB)
+2026-02-13 20:01:07,710 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  🤖 Claude API → 4 visual vectors (4893ms)
+     PA:-0.60  KL:-0.40  MOM:-0.50  STR:-0.30
+  📊 ATH score: -0.14 (43th pctl, MID_RANGE)
+     ATH detail: MID_RANGE: -1.97% from ATH (43th pctl, 500 bars)
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=-0.392 consensus=-0.404 | SELL ✓
+  💾 DB verdict: composite=-0.392 | partner=-0.412 | consensus=-0.404
+  🔴 SELL | threshold: MET ✓
+  📤 EXECUTE: SELL signal — checking gates...
+     Rate limit: 0/10 ✓
+     Cooldown: 306s elapsed (need 30s) ✓
+     Signal JSON: {"action": "SELL", "symbol": "XAUJ26.SIM.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter2"}
+     Writing to:  C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+2026-02-13 20:01:07,758 [INFO] 📝 SIGNAL → C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt: {"action": "SELL", "symbol": "XAUJ26.SIM.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter2"}
+  ✅ SIGNAL WRITTEN → EA should pick up within 100ms
+     SELL 1 XAUJ26.SIM.sim | signals: 1/10
+
+──── 1H TICK @ 20:02 ────────────────────────────────────────
+  📸 Screenshot captured (339KB)
+2026-02-13 20:02:13,916 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  🤖 Claude API → 4 visual vectors (5812ms)
+     PA:-0.60  KL:-0.40  MOM:-0.50  STR:-0.70
+  📊 ATH score: -0.14 (43th pctl, MID_RANGE)
+     ATH detail: MID_RANGE: -1.97% from ATH (43th pctl, 500 bars)
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 1h | composite=-0.528 consensus=-0.474 | SELL ✓
+  💾 DB verdict: composite=-0.528 | partner=-0.392 | consensus=-0.474
+  🔴 SELL | threshold: MET ✓
+  📤 EXECUTE: SELL signal — checking gates...
+     Rate limit: 1/10 ✓
+     Cooldown: 66s elapsed (need 30s) ✓
+     Signal JSON: {"action": "SELL", "symbol": "XAUJ26.SIM.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter3"}
+     Writing to:  C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+2026-02-13 20:02:13,958 [INFO] 📝 SIGNAL → C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt: {"action": "SELL", "symbol": "XAUJ26.SIM.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter3"}
+  ✅ SIGNAL WRITTEN → EA should pick up within 100ms
+     SELL 1 XAUJ26.SIM.sim | signals: 2/10
+  💓 20:05 — waiting (next 15m tick at :16)
+  💓 20:10 — waiting (next 15m tick at :16)
+  💓 20:15 — waiting (next 15m tick at :16)
+
+──── 15M TICK @ 20:16 ────────────────────────────────────────
+  📸 Screenshot captured (427KB)
+2026-02-13 20:16:09,828 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  🤖 Claude API → 4 visual vectors (5133ms)
+     PA:-0.60  KL:-0.50  MOM:-0.70  STR:-0.60
+  📊 ATH score: -0.14 (43th pctl, MID_RANGE)
+     ATH detail: MID_RANGE: -1.97% from ATH (43th pctl, 500 bars)
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=-0.566 consensus=-0.543 | SELL ✓
+  💾 DB verdict: composite=-0.566 | partner=-0.528 | consensus=-0.543
+  🔴 SELL | threshold: MET ✓
+  📤 EXECUTE: SELL signal — checking gates...
+     Rate limit: 2/10 ✓
+     Cooldown: 836s elapsed (need 30s) ✓
+     Signal JSON: {"action": "SELL", "symbol": "XAUJ26.SIM.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter4"}
+     Writing to:  C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+2026-02-13 20:16:09,876 [INFO] 📝 SIGNAL → C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt: {"action": "SELL", "symbol": "XAUJ26.SIM.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter4"}
+  ✅ SIGNAL WRITTEN → EA should pick up within 100ms
+     SELL 1 XAUJ26.SIM.sim | signals: 3/10
+  💓 20:20 — waiting (next 15m tick at :31)
+  💓 20:25 — waiting (next 15m tick at :31)

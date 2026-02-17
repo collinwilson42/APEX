@@ -1,0 +1,183 @@
+
+============================================================
+  TORRA TRADER v3.1 — DUAL SCREENSHOT + MULTI-AGENT
+  Instance:  tr_1771023001488
+  Symbol:    XAUJ26.SIM
+  Profile:   XAUJ26.SIM Trading Profile (6bd1dfe7-824)
+  Model:     claude-sonnet-4-20250514
+  Threshold: +/-0.3
+  Weights:   PA:0.30 KL:0.15 MOM:0.25 ATH:0.10 STR:0.20
+  TF Blend:  15m:0.60 | 1h:0.40
+  Lot Size:  1
+  Signal:    C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+  Capture:   mss (per-timeframe regions)
+    15m:     left=1040, top=200, 1840x520
+    1h:      left=1040, top=710, 1840x500
+  Agents:    BUDGET mode (4 agents)
+             technical, bull_researcher, bear_researcher, risk_gate
+============================================================
+
+  Schedule:  15m@(1, 16, 31, 46) | 1h@(2,)
+  [run-now] Immediate first tick...
+
+---- 15M TICK @ 20:36 ────────────────────────────────────────
+  Config: BUY>=+0.300  SELL<=-0.300  lots=1  cd=300s
+  [capture] 15m chart via mss region (1040,200 1840x520)
+  [capture] Chart captured (199KB) via mss region
+2026-02-16 20:37:04,243 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  [score] Base -> PA:-0.60  KL:-0.40  MOM:-0.50  STR:-0.70
+  [agents] Debate (budget mode)...
+2026-02-16 20:37:09,127 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 20:37:09,127 [WARNING] [TechnicalAgent] JSON parse failed: Expecting value: line 5 column 23 (char 105)
+2026-02-16 20:37:09,142 [INFO]   🔹 technical: conf=low flags=['agent_error']
+2026-02-16 20:37:13,880 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 20:37:13,884 [INFO]   🐂 Bull: conf=low strongest=key_levels
+2026-02-16 20:37:18,381 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 20:37:18,395 [INFO]   🐻 Bear: conf=medium weakest=structure
+2026-02-16 20:37:22,244 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 20:37:22,244 [INFO]   🛡️  Risk: level=high veto=False
+2026-02-16 20:37:22,244 [INFO]   ⚖️  Final: PA=-0.007 KL=+0.010 MOM=-0.007 STR=-0.012 | 17968ms | risk=high
+  [agents] Adjustments -> PA:-0.007  KL:+0.010  MOM:-0.007  STR:-0.012
+  [agents] Final blend -> PA:-0.61  KL:-0.39  MOM:-0.51  STR:-0.71
+  [score] Agent Debate (AGENT_DEBATE) -> 4 vectors (24150ms)
+  [ath] ATH score: -0.48 (26th pctl, FAR_ATH)
+[SentimentDB] Partner 1h is stale (203720s > 7200s) — using own composite only
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=-0.557 consensus=-0.557 | SELL ✓ (buy>=+0.30 sell<=-0.30)
+  [db] Verdict: composite=-0.557 | partner=N/A | consensus=-0.557
+  [<<] SELL | threshold: MET
+  [signal] Symbol resolve: instance='XAUJ26.SIM' -> lookup='XAUJ26' -> mt5='XAUUSD.sim'
+  [signal] File written: C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt (100 bytes)
+  [signal] Payload: {"action": "SELL", "symbol": "XAUUSD.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter1"}
+2026-02-16 20:37:22,292 [INFO] SIGNAL -> C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt: {"action": "SELL", "symbol": "XAUUSD.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter1"}
+  [SIGNAL] -> MT5: SELL 1 XAUUSD.sim
+
+  [heartbeat] 20:40 — waiting (next 15m tick at :46)
+  [heartbeat] 20:45 — waiting (next 15m tick at :46)
+
+---- 15M TICK @ 20:46 ────────────────────────────────────────
+  Config: BUY>=+0.300  SELL<=-0.300  lots=1  cd=300s
+  [capture] 15m chart via mss region (1040,200 1840x520)
+  [capture] Chart captured (206KB) via mss region
+2026-02-16 20:46:07,495 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  [score] Base -> PA:-0.60  KL:-0.40  MOM:-0.50  STR:-0.70
+  [agents] Debate (budget mode)...
+2026-02-16 20:46:12,361 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 20:46:12,361 [INFO]   🔹 technical: conf=medium flags=['hammer_or_pin_bar_at_support', 'lower_lows_lower_highs_confirmed', 'gap_down_with_follow_through', 'potential_trend_exhaustion_signal', 'oversold_on_bollinger_bands']
+2026-02-16 20:46:16,912 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 20:46:16,914 [INFO]   🐂 Bull: conf=medium strongest=price_action
+2026-02-16 20:46:21,410 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 20:46:21,410 [INFO]   🐻 Bear: conf=medium weakest=structure
+2026-02-16 20:46:24,844 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 20:46:24,844 [INFO]   🛡️  Risk: level=high veto=False
+2026-02-16 20:46:24,844 [INFO]   ⚖️  Final: PA=-0.045 KL=-0.026 MOM=-0.004 STR=-0.071 | 17333ms | risk=high
+  [agents] Adjustments -> PA:-0.045  KL:-0.026  MOM:-0.004  STR:-0.071
+  [agents] Final blend -> PA:-0.65  KL:-0.43  MOM:-0.50  STR:-0.77
+  [score] Agent Debate (AGENT_DEBATE) -> 4 vectors (22398ms)
+  [ath] ATH score: -0.48 (26th pctl, FAR_ATH)
+[SentimentDB] Partner 1h is stale (204263s > 7200s) — using own composite only
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=-0.585 consensus=-0.585 | SELL ✓ (buy>=+0.30 sell<=-0.30)
+  [db] Verdict: composite=-0.585 | partner=N/A | consensus=-0.585
+  [<<] SELL | threshold: MET
+  [signal] Symbol resolve: instance='XAUJ26.SIM' -> lookup='XAUJ26' -> mt5='XAUUSD.sim'
+  [signal] File written: C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt (100 bytes)
+  [signal] Payload: {"action": "SELL", "symbol": "XAUUSD.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter2"}
+2026-02-16 20:46:24,894 [INFO] SIGNAL -> C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt: {"action": "SELL", "symbol": "XAUUSD.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter2"}
+  [SIGNAL] -> MT5: SELL 1 XAUUSD.sim
+  [heartbeat] 20:50 — waiting (next 15m tick at :01)
+  [heartbeat] 20:55 — waiting (next 15m tick at :01)
+  [heartbeat] 21:00 — waiting (next 15m tick at :01)
+
+---- 15M TICK @ 21:01 ────────────────────────────────────────
+  Config: BUY>=+0.300  SELL<=-0.300  lots=1  cd=300s
+  [capture] 15m chart via mss region (1040,200 1840x520)
+  [capture] Chart captured (196KB) via mss region
+2026-02-16 21:01:11,210 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  [score] Base -> PA:-0.60  KL:-0.40  MOM:-0.50  STR:-0.30
+  [agents] Debate (budget mode)...
+2026-02-16 21:01:15,995 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 21:01:15,995 [INFO]   🔹 technical: conf=medium flags=['possible_capitulation_at_support', 'double_bottom_formation_4850', 'wick_rejection_lower_prices', 'trend_exhaustion_signal', 'lower_momentum_conviction_vs_structure']
+2026-02-16 21:01:20,761 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 21:01:20,761 [INFO]   🐂 Bull: conf=medium strongest=price_action
+2026-02-16 21:01:26,144 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 21:01:26,144 [INFO]   🐻 Bear: conf=medium weakest=price_action
+2026-02-16 21:01:29,635 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 21:01:29,635 [INFO]   🛡️  Risk: level=high veto=False
+2026-02-16 21:01:29,635 [INFO]   ⚖️  Final: PA=-0.045 KL=+0.017 MOM=-0.035 STR=-0.060 | 18424ms | risk=high
+  [agents] Adjustments -> PA:-0.045  KL:+0.017  MOM:-0.035  STR:-0.060
+  [agents] Final blend -> PA:-0.65  KL:-0.38  MOM:-0.53  STR:-0.36
+  [score] Agent Debate (AGENT_DEBATE) -> 4 vectors (24572ms)
+  [ath] ATH score: -0.48 (26th pctl, FAR_ATH)
+[SentimentDB] Partner 1h is stale (205167s > 7200s) — using own composite only
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=-0.504 consensus=-0.504 | SELL ✓ (buy>=+0.30 sell<=-0.30)
+  [db] Verdict: composite=-0.504 | partner=N/A | consensus=-0.504
+  [<<] SELL | threshold: MET
+  [signal] Symbol resolve: instance='XAUJ26.SIM' -> lookup='XAUJ26' -> mt5='XAUUSD.sim'
+  [signal] File written: C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt (100 bytes)
+  [signal] Payload: {"action": "SELL", "symbol": "XAUUSD.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter3"}
+2026-02-16 21:01:29,711 [INFO] SIGNAL -> C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt: {"action": "SELL", "symbol": "XAUUSD.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter3"}
+  [SIGNAL] -> MT5: SELL 1 XAUUSD.sim
+
+---- 1H TICK @ 21:02 ────────────────────────────────────────
+  Config: BUY>=+0.300  SELL<=-0.300  lots=1  cd=300s
+  [capture] 1h chart via mss region (1040,710 1840x500)
+  [capture] Chart captured (118KB) via mss region
+2026-02-16 21:02:15,162 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  [score] Base -> PA:-0.60  KL:-0.40  MOM:-0.30  STR:-0.50
+  [agents] Debate (budget mode)...
+2026-02-16 21:02:20,998 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 21:02:20,998 [WARNING] [TechnicalAgent] JSON parse failed: Expecting value: line 5 column 23 (char 105)
+2026-02-16 21:02:20,998 [INFO]   🔹 technical: conf=low flags=['agent_error']
+2026-02-16 21:02:25,029 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 21:02:25,029 [INFO]   🐂 Bull: conf=low strongest=key_levels
+2026-02-16 21:02:29,510 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 21:02:29,510 [INFO]   🐻 Bear: conf=medium weakest=momentum
+2026-02-16 21:02:32,747 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 21:02:32,747 [INFO]   🛡️  Risk: level=high veto=False
+2026-02-16 21:02:32,747 [INFO]   ⚖️  Final: PA=-0.007 KL=+0.010 MOM=-0.011 STR=-0.004 | 17585ms | risk=high
+  [agents] Adjustments -> PA:-0.007  KL:+0.010  MOM:-0.011  STR:-0.004
+  [agents] Final blend -> PA:-0.61  KL:-0.39  MOM:-0.31  STR:-0.50
+  [score] Agent Debate (AGENT_DEBATE) -> 4 vectors (22886ms)
+  [ath] ATH score: -0.48 (26th pctl, FAR_ATH)
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 1h | composite=-0.467 consensus=-0.489 | SELL ✓ (buy>=+0.30 sell<=-0.30)
+  [db] Verdict: composite=-0.467 | partner=-0.5041 | consensus=-0.489
+  [<<] SELL | threshold: MET
+  [cooldown] 237s remaining
+  [heartbeat] 21:05 — waiting (next 15m tick at :16)
+  [heartbeat] 21:10 — waiting (next 15m tick at :16)
+  [heartbeat] 21:15 — waiting (next 15m tick at :16)
+
+---- 15M TICK @ 21:16 ────────────────────────────────────────
+  Config: BUY>=+0.300  SELL<=-0.300  lots=1  cd=300s
+  [capture] 15m chart via mss region (1040,200 1840x520)
+  [capture] Chart captured (207KB) via mss region
+2026-02-16 21:16:08,982 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  [score] Base -> PA:-0.60  KL:-0.40  MOM:-0.50  STR:-0.70
+  [agents] Debate (budget mode)...
+2026-02-16 21:16:13,560 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 21:16:13,560 [INFO]   🔹 technical: conf=medium flags=['descending_wedge_forming', 'wick_rejection_at_support', 'weak_candle_closes', 'momentum_deceleration_possible', 'consolidation_after_gap_down']
+2026-02-16 21:16:18,177 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 21:16:18,177 [INFO]   🐂 Bull: conf=medium strongest=structure
+2026-02-16 21:16:22,829 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 21:16:22,829 [INFO]   🐻 Bear: conf=medium weakest=price_action
+2026-02-16 21:16:26,277 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 21:16:26,277 [INFO]   🛡️  Risk: level=high veto=False
+2026-02-16 21:16:26,277 [INFO]   ⚖️  Final: PA=-0.045 KL=+0.017 MOM=-0.030 STR=-0.045 | 17293ms | risk=high
+  [agents] Adjustments -> PA:-0.045  KL:+0.017  MOM:-0.030  STR:-0.045
+  [agents] Final blend -> PA:-0.65  KL:-0.38  MOM:-0.53  STR:-0.74
+  [score] Agent Debate (AGENT_DEBATE) -> 4 vectors (22801ms)
+  [ath] ATH score: -0.48 (26th pctl, FAR_ATH)
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=-0.580 consensus=-0.535 | SELL ✓ (buy>=+0.30 sell<=-0.30)
+  [db] Verdict: composite=-0.580 | partner=-0.4668 | consensus=-0.535
+  [<<] SELL | threshold: MET
+  [signal] Symbol resolve: instance='XAUJ26.SIM' -> lookup='XAUJ26' -> mt5='XAUUSD.sim'
+  [signal] File written: C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt (100 bytes)
+  [signal] Payload: {"action": "SELL", "symbol": "XAUUSD.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter5"}
+2026-02-16 21:16:26,310 [INFO] SIGNAL -> C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt: {"action": "SELL", "symbol": "XAUUSD.sim", "qty": 1, "comment": "TORRA|SELL|tr_1771023001488|iter5"}
+  [SIGNAL] -> MT5: SELL 1 XAUUSD.sim
+  [heartbeat] 21:20 — waiting (next 15m tick at :31)
+  [heartbeat] 21:25 — waiting (next 15m tick at :31)

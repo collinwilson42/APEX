@@ -1,0 +1,5 @@
+Copy this file over your existing EA:
+  From: (downloaded file)
+  To:   C:\Users\colli\Downloads\#CodeBase\Protection & Detection v6.5.mq5
+  
+Then compile in MetaEditor and re-add to chart.

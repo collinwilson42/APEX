@@ -192,8 +192,11 @@ CREATE TABLE IF NOT EXISTS sentiment_{instance_id} (
     
     -- Source
     source_model TEXT,
-    source_type TEXT,         -- API | MOCK | MANUAL
+    source_type TEXT,         -- API | MOCK | MANUAL | AGENT_DEBATE
     processing_time_ms INTEGER,
+    
+    -- Seed 22: Multi-Agent Deliberation
+    agent_deliberation TEXT,  -- JSON: full debate log (analyst reports, bull/bear, risk gate)
     
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 )
@@ -532,14 +535,14 @@ class InstanceDatabaseManager:
             "structure":    0.34
         },
         "timeframe_weights": {
-            "15m": 0.40,
-            "1h":  0.60
+            "15m": 0.60,
+            "1h":  0.40
         },
         "thresholds": {
-            "buy":       0.55,
-            "sell":     -0.55,
-            "dead_zone": 0.25,
-            "gut_veto":  0.30
+            "buy":       0.30,
+            "sell":     -0.30,
+            "dead_zone": 0.10,
+            "gut_veto":  0.20
         },
         "risk": {
             "base_lots":             1.0,
@@ -631,6 +634,9 @@ class InstanceDatabaseManager:
         Backfill any profiles whose trading_config is NULL or contains
         stale keys (e.g. maxTokens, temperature, schedule) with the
         correct DEFAULT_TRADING_CONFIG.
+        
+        Also migrates profiles with unreachable thresholds (>= 0.50)
+        to the calibrated defaults.
         """
         conn = self._get_conn()
         cur = conn.cursor()
@@ -640,6 +646,7 @@ class InstanceDatabaseManager:
         cur.execute("SELECT id, trading_config FROM profiles")
         rows = cur.fetchall()
         updated = 0
+        threshold_fixed = 0
         for row in rows:
             tc = row['trading_config']
             needs_update = False
@@ -651,6 +658,20 @@ class InstanceDatabaseManager:
                     # Old format detection: has maxTokens/temperature/schedule but no sentiment_weights
                     if 'sentiment_weights' not in parsed:
                         needs_update = True
+                    else:
+                        # Fix unreachable thresholds (the HOLD bug)
+                        th = parsed.get('thresholds', {})
+                        buy_th = abs(float(th.get('buy', 0.55)))
+                        if buy_th >= 0.50:
+                            # Thresholds too high — calibrate to actual score range
+                            parsed['thresholds'] = self.DEFAULT_TRADING_CONFIG['thresholds']
+                            parsed['timeframe_weights'] = self.DEFAULT_TRADING_CONFIG['timeframe_weights']
+                            cur.execute(
+                                "UPDATE profiles SET trading_config = ?, updated_at = ? WHERE id = ?",
+                                (json.dumps(parsed), datetime.utcnow().isoformat() + 'Z', row['id'])
+                            )
+                            threshold_fixed += 1
+                            continue
                 except (json.JSONDecodeError, TypeError):
                     needs_update = True
 
@@ -662,8 +683,11 @@ class InstanceDatabaseManager:
                 updated += 1
 
         if updated:
-            conn.commit()
             print(f"  ✓ Backfilled trading_config for {updated} profile(s)")
+        if threshold_fixed:
+            print(f"  ✓ Fixed unreachable thresholds in {threshold_fixed} profile(s) (0.55 → 0.30)")
+        if updated or threshold_fixed:
+            conn.commit()
         conn.close()
 
     def _sanitize_instance_id(self, instance_id: str) -> str:
@@ -810,6 +834,96 @@ class InstanceDatabaseManager:
         except Exception as e:
             print(f"[InstanceDB] Restore failed: {e}")
             return False
+        finally:
+            conn.close()
+    
+    def register_instance(self, instance_id: str, symbol: str, account_type: str = "SIM",
+                          display_name: str = None, profile_id: str = None) -> AlgorithmInstance:
+        """
+        Register an instance with a pre-existing ID (e.g. from frontend localStorage).
+        Creates DB record + associated tables. Idempotent — skips if already exists.
+        """
+        existing = self.get_instance(instance_id)
+        if existing:
+            return existing
+        
+        safe_id = self._sanitize_instance_id(instance_id)
+        if not display_name:
+            display_name = f"{symbol} {account_type.upper()}"
+        
+        instance = AlgorithmInstance(
+            id=instance_id,
+            display_name=display_name,
+            symbol=symbol.upper(),
+            account_type=account_type.upper(),
+            profile_id=profile_id,
+            status="ACTIVE"
+        )
+        
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("""
+                INSERT OR IGNORE INTO algorithm_instances 
+                (id, display_name, symbol, account_type, profile_id, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                instance.id, instance.display_name, instance.symbol,
+                instance.account_type, instance.profile_id or '',
+                instance.status, instance.created_at
+            ))
+            
+            # Create associated tables
+            cursor.execute(f"""CREATE TABLE IF NOT EXISTS sentiment_{safe_id} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                profile_id TEXT, symbol TEXT, timeframe TEXT, timestamp TEXT,
+                price_action_score REAL, key_levels_score REAL, momentum_score REAL,
+                ath_score REAL, structure_score REAL,
+                composite_score REAL, consensus_score REAL, partner_composite REAL,
+                matrix_bias INTEGER, matrix_bias_label TEXT,
+                meets_threshold INTEGER DEFAULT 0, signal_direction TEXT DEFAULT 'HOLD',
+                weights_snapshot TEXT, source_model TEXT, source_type TEXT DEFAULT 'API',
+                processing_time_ms INTEGER,
+                agent_deliberation TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )""")
+            
+            cursor.execute(f"""CREATE TABLE IF NOT EXISTS state_transitions_{safe_id} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timeframe TEXT, timestamp TEXT, from_state TEXT, to_state TEXT,
+                trigger_type TEXT, trigger_detail TEXT, confidence REAL,
+                metadata TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )""")
+            
+            cursor.execute(f"""CREATE TABLE IF NOT EXISTS positions_{safe_id} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticket TEXT, symbol TEXT, direction TEXT, lots REAL,
+                entry_price REAL, current_price REAL, sl REAL, tp REAL,
+                pnl REAL, swap REAL, commission REAL,
+                open_time TEXT, close_time TEXT, status TEXT DEFAULT 'OPEN',
+                profile_id TEXT, metadata TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )""")
+            
+            cursor.execute(MARKOV_MATRICES_TABLE_SCHEMA.format(instance_id=safe_id))
+            
+            # Seed empty Markov matrices for both timeframes
+            empty_matrix = json.dumps([[0.2] * 5 for _ in range(5)])
+            empty_counts = json.dumps([[0] * 5 for _ in range(5)])
+            for tf in ['15m', '1h']:
+                cursor.execute(f"""
+                    INSERT OR IGNORE INTO markov_matrices_{safe_id}
+                    (profile_id, timeframe, matrix_data, transition_counts, current_state)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (profile_id, tf, empty_matrix, empty_counts, 0))
+            
+            conn.commit()
+            print(f"[InstanceDB] Registered instance: {instance_id} ({symbol})")
+            return instance
+        except Exception as e:
+            conn.rollback()
+            raise e
         finally:
             conn.close()
     
@@ -1125,6 +1239,34 @@ class InstanceDatabaseManager:
         profile_id = sentiment_data.get("profile_id")
         timeframe = sentiment_data.get("timeframe", "15m")
         
+        # ── Ensure all instance tables exist (handles legacy instances) ──
+        try:
+            conn_check = self._get_conn()
+            cur_check = conn_check.cursor()
+            cur_check.execute(SENTIMENT_TABLE_SCHEMA.format(instance_id=safe_id))
+            cur_check.execute(MARKOV_MATRICES_TABLE_SCHEMA.format(instance_id=safe_id))
+            cur_check.execute(STATE_TRANSITIONS_TABLE_SCHEMA.format(instance_id=safe_id))
+            # Seed 22: Migrate existing tables — add agent_deliberation column
+            try:
+                cur_check.execute(f"ALTER TABLE sentiment_{safe_id} ADD COLUMN agent_deliberation TEXT")
+            except Exception:
+                pass  # Column already exists
+            # Seed markov if empty
+            cur_check.execute(f"SELECT COUNT(*) FROM markov_matrices_{safe_id}")
+            if cur_check.fetchone()[0] == 0:
+                empty_matrix = json.dumps([[0.2] * 5 for _ in range(5)])
+                empty_counts = json.dumps([[0] * 5 for _ in range(5)])
+                for tf in ['15m', '1h']:
+                    cur_check.execute(f"""
+                        INSERT OR IGNORE INTO markov_matrices_{safe_id}
+                        (profile_id, timeframe, matrix_data, transition_counts, current_state)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (profile_id, tf, empty_matrix, empty_counts, 0))
+            conn_check.commit()
+            conn_check.close()
+        except Exception as e:
+            print(f"[SentimentDB] Table ensure warning: {e}")
+        
         # ── Load profile config ──
         if profile is None and profile_id:
             profile = self.get_profile(profile_id)
@@ -1170,24 +1312,47 @@ class InstanceDatabaseManager:
         own_weight = float(tw.get(timeframe, 0.40 if timeframe == "15m" else 0.60))
         partner_weight = float(tw.get(partner_tf, 0.60 if timeframe == "15m" else 0.40))
         
-        # Get partner's latest composite
+        # Seed 25: Partner freshness — only blend if partner reading is recent
+        # 15m waits for 1h: partner must be within 2 hours
+        # 1h uses 15m: partner must be within 30 minutes
+        partner_max_age_seconds = 7200 if timeframe == "15m" else 1800
+        
+        # Get partner's latest composite (only if fresh enough)
         partner_composite = None
-        consensus = composite  # Default: just own composite if no partner data
+        consensus = composite  # Default: just own composite if no fresh partner
         
         conn = self._get_conn()
         cursor = conn.cursor()
         
         try:
             cursor.execute(f"""
-                SELECT composite_score FROM sentiment_{safe_id}
+                SELECT composite_score, timestamp FROM sentiment_{safe_id}
                 WHERE timeframe = ?
                 ORDER BY timestamp DESC LIMIT 1
             """, (partner_tf,))
             partner_row = cursor.fetchone()
             if partner_row and partner_row["composite_score"] is not None:
-                partner_composite = float(partner_row["composite_score"])
-                consensus = (composite * own_weight) + (partner_composite * partner_weight)
-                consensus = round(consensus, 4)
+                # Check freshness — only blend if partner is from this session
+                partner_ts = partner_row["timestamp"] or ""
+                partner_fresh = False
+                try:
+                    from datetime import timezone
+                    partner_dt = datetime.fromisoformat(partner_ts.replace('Z', '+00:00'))
+                    if partner_dt.tzinfo is None:
+                        partner_dt = partner_dt.replace(tzinfo=timezone.utc)
+                    now_utc = datetime.now(timezone.utc)
+                    age = (now_utc - partner_dt).total_seconds()
+                    partner_fresh = age <= partner_max_age_seconds
+                    if not partner_fresh:
+                        print(f"[SentimentDB] Partner {partner_tf} is stale ({age:.0f}s > {partner_max_age_seconds}s) — using own composite only")
+                except (ValueError, TypeError):
+                    partner_fresh = False
+                
+                if partner_fresh:
+                    partner_composite = float(partner_row["composite_score"])
+                    consensus = (composite * own_weight) + (partner_composite * partner_weight)
+                    consensus = round(consensus, 4)
+                # else: consensus stays = composite (no stale blending)
         except Exception:
             pass  # Table may not exist yet or be empty
         
@@ -1228,8 +1393,9 @@ class InstanceDatabaseManager:
                 composite_score, consensus_score, partner_composite,
                 matrix_bias, matrix_bias_label, meets_threshold, signal_direction,
                 weights_snapshot,
-                source_model, source_type, processing_time_ms
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                source_model, source_type, processing_time_ms,
+                agent_deliberation
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             profile_id,
             sentiment_data.get("symbol"),
@@ -1241,18 +1407,22 @@ class InstanceDatabaseManager:
             weights_snapshot,
             sentiment_data.get("source_model"),
             sentiment_data.get("source_type"),
-            sentiment_data.get("processing_time_ms")
+            sentiment_data.get("processing_time_ms"),
+            sentiment_data.get("agent_deliberation"),  # Seed 22: debate JSON
         ))
         
         reading_id = cursor.lastrowid
         conn.commit()
         conn.close()
         
-        # Check for Markov state transition
+        # Check for Markov state transition (non-fatal if table missing)
         sentiment_data["composite_score"] = composite
-        self._check_state_transition(instance_id, sentiment_data, matrix_bias)
+        try:
+            self._check_state_transition(instance_id, sentiment_data, matrix_bias)
+        except Exception as e:
+            print(f"[SentimentDB] Markov transition check skipped: {e}")
         
-        print(f"[SentimentDB] {timeframe} | composite={composite:+.3f} consensus={consensus:+.3f} | {signal_direction} {'✓' if meets_threshold else '·'}")
+        print(f"[SentimentDB] {timeframe} | composite={composite:+.3f} consensus={consensus:+.3f} | {signal_direction} {'✓' if meets_threshold else '·'} (buy>={buy_threshold:+.2f} sell<={sell_threshold:+.2f})")
         
         return reading_id
     

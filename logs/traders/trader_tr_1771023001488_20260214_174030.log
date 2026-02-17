@@ -1,0 +1,4 @@
+  File "C:\Users\colli\Downloads\#CodeBase\torra_trader.py", line 155
+    clean = re.sub(r'\s*```
+                   ^
+SyntaxError: unterminated string literal (detected at line 155)

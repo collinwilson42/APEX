@@ -1,0 +1,48 @@
+
+============================================================
+  TORRA TRADER v3.1 — DUAL SCREENSHOT + MULTI-AGENT
+  Instance:  tr_1771023001488
+  Symbol:    XAUJ26.SIM
+  Profile:   XAUJ26.SIM Trading Profile (6bd1dfe7-824)
+  Model:     claude-sonnet-4-20250514
+  Threshold: +/-0.25
+  Weights:   PA:0.30 KL:0.15 MOM:0.25 ATH:0.10 STR:0.20
+  TF Blend:  15m:0.40 | 1h:0.60
+  Lot Size:  1
+  Signal:    C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+  Capture:   mss (per-timeframe regions)
+    15m:     left=1040, top=200, 1840x520
+    1h:      left=1040, top=710, 1840x500
+  Agents:    BUDGET mode (4 agents)
+             technical, bull_researcher, bear_researcher, risk_gate
+============================================================
+
+  Schedule:  15m@(1, 16, 31, 46) | 1h@(2,)
+  [run-now] Immediate first tick...
+
+---- 15M TICK @ 18:03 ────────────────────────────────────────
+  Config: BUY>=+0.250  SELL<=-0.250  lots=1  cd=300s
+  [capture] 15m chart via mss region (1040,200 1840x520)
+  [capture] Chart captured (200KB) via mss region
+2026-02-15 18:03:34,299 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  [score] Base -> PA:+0.60  KL:+0.70  MOM:+0.50  STR:+0.40
+  [agents] Debate (budget mode)...
+2026-02-15 18:03:38,815 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-15 18:03:38,831 [WARNING] [TechnicalAgent] JSON parse failed: Expecting value: line 4 column 25 (char 76)
+2026-02-15 18:03:38,831 [INFO]   🔹 technical: conf=low flags=['agent_error']
+2026-02-15 18:03:42,748 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-15 18:03:42,748 [INFO]   🐂 Bull: conf=medium strongest=key_levels
+2026-02-15 18:03:47,699 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-15 18:03:47,699 [INFO]   🐻 Bear: conf=low weakest=momentum
+2026-02-15 18:03:54,015 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-15 18:03:54,015 [INFO]   🛡️  Risk: level=medium veto=False
+2026-02-15 18:03:54,015 [INFO]   ⚖️  Final: PA=-0.017 KL=+0.010 MOM=-0.011 STR=-0.012 | 19682ms | risk=medium
+  [agents] Adjustments -> PA:-0.017  KL:+0.010  MOM:-0.011  STR:-0.012
+  [agents] Final blend -> PA:+0.58  KL:+0.71  MOM:+0.49  STR:+0.39
+  [score] Agent Debate (AGENT_DEBATE) -> 4 vectors (25267ms)
+  [ath] ATH score: -0.14 (43th pctl, MID_RANGE)
+[SentimentDB] 15m | composite=+0.467 consensus=+0.178 | HOLD ·
+  [db] Verdict: composite=+0.467 | partner=-0.014 | consensus=+0.178
+  [--] HOLD | threshold: NOT MET
+  [hold] No signal — holding
+

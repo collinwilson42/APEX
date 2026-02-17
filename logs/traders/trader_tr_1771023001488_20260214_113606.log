@@ -1,0 +1,44 @@
+
+════════════════════════════════════════════════════════════
+  🔷 TORRA TRADER v3.0 — MULTI-AGENT DECISION FRAMEWORK
+  Instance:  tr_1771023001488
+  Symbol:    XAUJ26.SIM
+  Profile:   XAUJ26.SIM Trading Profile (6bd1dfe7-824)
+  Model:     claude-sonnet-4-20250514
+  Threshold: ±0.5
+  Weights:   PA:0.12 KL:0.16 MOM:0.28 ATH:0.10 STR:0.34
+  TF Blend:  15m:0.40 | 1h:0.60
+  Lot Size:  1
+  Signal:    C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+  Agents:    BUDGET mode (4 agents)
+             technical, bull_researcher, bear_researcher, risk_gate
+════════════════════════════════════════════════════════════
+
+  Schedule:  15m@(1, 16, 31, 46) | 1h@(2,)
+  🚀 Immediate first tick (--run-now)...
+
+──── 15M TICK @ 11:36 ────────────────────────────────────────
+  Config: BUY>=+0.500  SELL<=-0.500  lots=1  cd=30s
+  📸 Screenshot captured (330KB)
+  ⚔️  Agent Debate (budget mode)...
+2026-02-14 11:36:15,491 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-14 11:36:15,525 [WARNING] [TechnicalAgent] JSON parse failed: Extra data: line 17 column 1 (char 866)
+2026-02-14 11:36:15,525 [INFO]   🔹 technical: conf=low flags=['agent_error']
+2026-02-14 11:36:20,139 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-14 11:36:20,139 [INFO]   🐂 Bull: conf=low strongest=price_action
+2026-02-14 11:36:24,691 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-14 11:36:24,692 [INFO]   🐻 Bear: conf=low weakest=momentum
+2026-02-14 11:36:27,819 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-14 11:36:27,819 [INFO]   🛡️  Risk: level=high veto=False
+2026-02-14 11:36:27,819 [INFO]   ⚖️  Final: PA=+0.000 KL=+0.000 MOM=-0.011 STR=-0.007 | 15974ms | risk=high
+  ⚔️  Debate complete
+  🤖 Agent Debate (AGENT_DEBATE) → 4 vectors (15974ms)
+     PA:+0.00  KL:+0.00  MOM:-0.01  STR:-0.01
+  📊 ATH score: -0.14 (43th pctl, MID_RANGE)
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=-0.019 consensus=-0.325 | HOLD ·
+  💾 DB verdict: composite=-0.019 | partner=-0.528 | consensus=-0.325
+  ⚪ HOLD | threshold: NOT MET ·
+  ⏸️  No signal — holding
+
+  💓 11:40 — waiting (next 15m tick at :46)

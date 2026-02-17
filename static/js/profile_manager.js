@@ -365,10 +365,12 @@ const ProfileManager = {
             </div>
         `;
         
-        // Initialize Trading Config Panel after DOM is ready
-        if (isFormView && typeof TradingConfigPanel !== 'undefined') {
-            const configObj = this._parseProfileTradingConfig(editingProfile);
-            TradingConfigPanel.render('pm-trading-config-panel', configObj);
+        // When entering form view, auto-switch right panel to Config tab (Seed 22)
+        if (isFormView && typeof ApexViewRenderer !== 'undefined') {
+            setTimeout(() => {
+                ApexViewRenderer.switchDetailsTab('config');
+                ApexViewRenderer.updateProfileDetails();
+            }, 50);
         }
     },
     
@@ -526,11 +528,6 @@ const ProfileManager = {
                 
                 <div id="pm-connection-status"></div>
                 
-                <!-- Trading Config Panel (TradingView-style inputs) -->
-                <div class="pm-form-group">
-                    <div id="pm-trading-config-panel"></div>
-                </div>
-                
                 <!-- Actions -->
                 <div class="pm-form-actions">
                     <button type="button" class="pm-btn pm-btn--primary" onclick="event.stopPropagation(); ProfileManager.saveFromForm()">
@@ -573,12 +570,6 @@ const ProfileManager = {
         const nameInput = document.getElementById('pm-name');
         const currentName = nameInput?.value || '';
         
-        // Preserve current config panel state before re-render
-        let currentConfig = null;
-        if (typeof TradingConfigPanel !== 'undefined') {
-            currentConfig = TradingConfigPanel.getConfig();
-        }
-        
         // Temporarily store form data
         const tempProfile = this.editingProfileId 
             ? { ...this.profiles.find(p => p.id === this.editingProfileId), provider, model: this.getDefaultModel(provider) }
@@ -592,11 +583,6 @@ const ProfileManager = {
             const newNameInput = document.getElementById('pm-name');
             if (newNameInput && currentName) {
                 newNameInput.value = currentName;
-            }
-            // Re-init config panel with preserved state
-            if (typeof TradingConfigPanel !== 'undefined') {
-                const configObj = currentConfig || this._parseProfileTradingConfig(tempProfile);
-                TradingConfigPanel.render('pm-trading-config-panel', configObj);
             }
         }
     },
@@ -968,6 +954,38 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('profile-manager')) {
         ProfileManager.init();
     }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// AUTO-SAVE: Config panel changes → DB (debounced)
+// ═══════════════════════════════════════════════════════════════════
+
+let _configSaveTimer = null;
+window.addEventListener('tcp:change', (e) => {
+    // Debounce: save 800ms after last change
+    if (_configSaveTimer) clearTimeout(_configSaveTimer);
+    _configSaveTimer = setTimeout(async () => {
+        const profileId = ProfileManager.editingProfileId || ProfileManager.activeProfileId;
+        if (!profileId) return;
+        
+        const config = e.detail?.config;
+        if (!config) return;
+        
+        try {
+            await ProfileManager.updateProfile(profileId, { trading_config: config });
+            
+            // Visual feedback
+            const badge = document.getElementById('tcp-save-badge');
+            if (badge) {
+                badge.textContent = 'Saved \u2713';
+                badge.classList.add('tcp-save-badge--visible');
+                setTimeout(() => badge.classList.remove('tcp-save-badge--visible'), 2000);
+            }
+            console.log('[TCP] Auto-saved config to profile', profileId);
+        } catch (err) {
+            console.error('[TCP] Auto-save failed:', err);
+        }
+    }, 800);
 });
 
 // Expose to window

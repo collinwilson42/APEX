@@ -1,0 +1,28 @@
+"""
+REGIME CLASSIFIER & MATRIX ENGINE
+===================================
+Seed 26: Deterministic Regime Intelligence
+
+Classifies every candle into one of 5 market regimes using ONLY
+pre-computed indicators from the intelligence DB. No AI, no subjectivity.
+Same data → same classification. Always.
+
+States:
+    STRONG_BULL  (2)  — Powerful uptrend, high conviction
+    BULL         (1)  — Clear upward bias
+    NEUTRAL      (0)  — No directional edge (ranging OR volatile)
+    BEAR        (-1)  — Clear downward bias
+    STRONG_BEAR (-2)  — Powerful downtrend, high conviction
+
+Each symbol gets its own matrix. No mingling.
+
+Usage:
+    from regime_classifier import backfill_regime_data, get_regime_matrix
+    backfill_regime_data("XAUJ26")           # classify all historical candles
+    matrix = get_regime_matrix("XAUJ26", "15m")  # get transition probabilities
+
+CLI:
+    python regime_classifier.py                  # all symbols
+    python regime_classifier.py XAUJ26           # one symbol
+    python regime_classifier.py XAUJ26 BTCUSD    # specific symbols
+"""

@@ -23,38 +23,38 @@ SYMBOL_DATABASES = {
     'XAUJ26': {
         'id': 'XAUJ26',
         'name': 'Gold Futures',
-        'symbol': 'XAUJ26.sim',
+        'symbol': 'XAUUSD.sim',
         'db_path': os.path.join(BASE_DIR, 'XAUJ26_intelligence.db'),
     },
-    'USOILH26': {
-        'id': 'USOILH26',
-        'name': 'Crude Oil Futures',
-        'symbol': 'USOILH26.sim',
-        'db_path': os.path.join(BASE_DIR, 'USOILH26_intelligence.db'),
+    'USOIL': {
+        'id': 'USOIL',
+        'name': 'Crude Oil',
+        'symbol': 'USOIL.sim',
+        'db_path': os.path.join(BASE_DIR, 'USOIL_intelligence.db'),
     },
-    'US500H26': {
-        'id': 'US500H26',
-        'name': 'S&P 500 Futures',
-        'symbol': 'US500H26.sim',
-        'db_path': os.path.join(BASE_DIR, 'US500H26_intelligence.db'),
+    'US500': {
+        'id': 'US500',
+        'name': 'S&P 500',
+        'symbol': 'US500.sim',
+        'db_path': os.path.join(BASE_DIR, 'US500_intelligence.db'),
     },
-    'US100H26': {
-        'id': 'US100H26',
-        'name': 'Nasdaq 100 Futures',
-        'symbol': 'US100H26.sim',
-        'db_path': os.path.join(BASE_DIR, 'US100H26_intelligence.db'),
+    'US100': {
+        'id': 'US100',
+        'name': 'Nasdaq 100',
+        'symbol': 'US100.sim',
+        'db_path': os.path.join(BASE_DIR, 'US100_intelligence.db'),
     },
-    'US30H26': {
-        'id': 'US30H26',
-        'name': 'Dow Jones Futures',
-        'symbol': 'US30H26.sim',
-        'db_path': os.path.join(BASE_DIR, 'US30H26_intelligence.db'),
+    'US30': {
+        'id': 'US30',
+        'name': 'Dow Jones',
+        'symbol': 'US30.sim',
+        'db_path': os.path.join(BASE_DIR, 'US30_intelligence.db'),
     },
-    'BTCF26': {
-        'id': 'BTCF26',
-        'name': 'Bitcoin Futures',
-        'symbol': 'BTCF26.sim',
-        'db_path': os.path.join(BASE_DIR, 'BTCF26_intelligence.db'),
+    'BTCUSD': {
+        'id': 'BTCUSD',
+        'name': 'Bitcoin',
+        'symbol': 'BTCUSD.sim',
+        'db_path': os.path.join(BASE_DIR, 'BTCUSD_intelligence.db'),
     }
 }
 

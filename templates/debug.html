@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeedBase — Mission Control</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0a0c12;
+            --surface: #12151e;
+            --surface-2: #1a1e2a;
+            --surface-3: #222736;
+            --border: rgba(100, 200, 180, 0.12);
+            --border-bright: rgba(100, 200, 180, 0.3);
+            --text: #E0D5C1;
+            --text-dim: rgba(224, 213, 193, 0.45);
+            --text-mid: rgba(224, 213, 193, 0.7);
+            --teal: #64C8B4;
+            --gold: #BB9847;
+            --red: #C85050;
+            --green: #50C870;
+            --blue: #5088C8;
+            --mono: 'JetBrains Mono', monospace;
+        }
+        
+        body {
+            font-family: var(--mono);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        h1 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--teal);
+            letter-spacing: 0.1em;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        h1 .subtitle {
+            font-size: 11px;
+            color: var(--text-dim);
+            font-weight: 400;
+        }
+        
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        
+        .header-bar .back-link {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-decoration: none;
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }
+        
+        .header-bar .back-link:hover {
+            color: var(--teal);
+            border-color: var(--border-bright);
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+        }
+        
+        .card--full { grid-column: 1 / -1; }
+        .card--third { }
+        
+        .card__title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-dim);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card__title .endpoint-tag {
+            font-size: 8px;
+            color: var(--text-dim);
+            font-weight: 400;
+            letter-spacing: 0.05em;
+            opacity: 0.6;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3px 0;
+            font-size: 11px;
+        }
+        
+        .stat-row__label { color: var(--text-dim); font-size: 11px; }
+        .stat-row__value { color: var(--text); font-weight: 600; font-size: 11px; }
+        .stat-row__value--teal { color: var(--teal); }
+        .stat-row__value--gold { color: var(--gold); }
+        .stat-row__value--red { color: var(--red); }
+        .stat-row__value--green { color: var(--green); }
+        .stat-row__value--blue { color: var(--blue); }
+        .stat-row__value--dim { color: var(--text-dim); font-weight: 400; }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+        }
+        
+        .badge--running { background: rgba(80, 200, 112, 0.15); color: var(--green); }
+        .badge--crashed { background: rgba(200, 80, 80, 0.15); color: var(--red); }
+        .badge--stopped { background: rgba(200, 80, 80, 0.15); color: var(--red); }
+        .badge--active { background: rgba(100, 200, 180, 0.15); color: var(--teal); }
+        .badge--ok { background: rgba(80, 200, 112, 0.12); color: var(--green); }
+        .badge--fail { background: rgba(200, 80, 80, 0.12); color: var(--red); }
+        .badge--warn { background: rgba(187, 152, 71, 0.15); color: var(--gold); }
+        .badge--none { background: rgba(255,255,255,0.05); color: var(--text-dim); }
+        .badge--idle { background: rgba(255,255,255,0.05); color: var(--text-dim); }
+        
+        .trader-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        
+        .trader-table th {
+            text-align: left;
+            font-size: 9px;
+            color: var(--text-dim);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .trader-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        
+        .log-output {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px 10px;
+            max-height: 260px;
+            overflow-y: auto;
+            font-size: 10px;
+            line-height: 1.7;
+            color: var(--text-dim);
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        
+        .log-output .log-entry { padding: 0; }
+        .log-output .log--info { color: var(--text-dim); }
+        .log-output .log--success { color: var(--green); }
+        .log-output .log--error { color: var(--red); }
+        .log-output .log--warn { color: var(--gold); }
+        .log-output .log--api { color: var(--blue); }
+        
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .btn {
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text);
+            transition: all 0.15s ease;
+        }
+        
+        .btn:hover {
+            border-color: var(--border-bright);
+            background: rgba(100, 200, 180, 0.08);
+        }
+        
+        .btn--danger { border-color: rgba(200, 80, 80, 0.3); color: var(--red); }
+        .btn--danger:hover { background: rgba(200, 80, 80, 0.1); }
+        
+        .refresh-note {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        .sentiment-mini {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            font-size: 10px;
+            text-align: center;
+        }
+        
+        .sentiment-mini__header {
+            font-size: 8px;
+            color: var(--text-dim);
+            letter-spacing: 0.08em;
+        }
+        
+        .sentiment-mini__val { font-weight: 600; }
+        .sentiment-mini__val--bull { color: var(--teal); }
+        .sentiment-mini__val--bear { color: var(--red); }
+        .sentiment-mini__val--neutral { color: var(--text-dim); }
+        
+        .health-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px;
+        }
+        
+        .health-chip {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            background: var(--bg);
+            border-radius: 4px;
+            font-size: 10px;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+        
+        .health-chip__label { color: var(--text-dim); }
+        
+        .error-inline {
+            font-size: 10px;
+            color: var(--red);
+            padding: 6px 10px;
+            background: rgba(200, 80, 80, 0.08);
+            border-radius: 4px;
+            border: 1px solid rgba(200, 80, 80, 0.15);
+            margin: 4px 0;
+            word-break: break-all;
+        }
+        
+        .section-sep {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 6px 0;
+        }
+        
+        .countdown-bar {
+            height: 3px;
+            background: var(--surface-3);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        
+        .countdown-bar__fill {
+            height: 100%;
+            background: var(--teal);
+            border-radius: 2px;
+            transition: width 1s linear;
+        }
+        
+        .pulse { animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <div>
+            <h1>
+                ◈ MISSION CONTROL
+                <span class="subtitle">Seed 18 — The Nervous System</span>
+            </h1>
+        </div>
+        <a href="/" class="back-link">← APEX</a>
+    </div>
+    
+    <div class="grid">
+        <!-- System State -->
+        <div class="card">
+            <div class="card__title">
+                System
+                <span class="endpoint-tag">local clock</span>
+            </div>
+            <div id="system-state">Loading...</div>
+        </div>
+        
+        <!-- Active Profile -->
+        <div class="card">
+            <div class="card__title">
+                Active Profile
+                <span class="endpoint-tag">/api/profile/list</span>
+            </div>
+            <div id="profile-state">Loading...</div>
+        </div>
+        
+        <!-- System Health -->
+        <div class="card card--full">
+            <div class="card__title">
+                Subsystem Health
+                <span class="endpoint-tag">/api/debug/health</span>
+            </div>
+            <div id="health-state">Loading...</div>
+        </div>
+        
+        <!-- Running Traders -->
+        <div class="card card--full">
+            <div class="card__title">
+                Trader Processes
+                <span class="endpoint-tag">/api/trader/status</span>
+            </div>
+            <div id="trader-state">Loading...</div>
+        </div>
+        
+        <!-- Latest Sentiments (per instance) -->
+        <div class="card card--full">
+            <div class="card__title">
+                Latest Sentiments
+                <span class="endpoint-tag">/api/instance/&lt;id&gt;/sentiments/latest</span>
+            </div>
+            <div id="sentiment-state">Loading...</div>
+        </div>
+        
+        <!-- Instances -->
+        <div class="card card--full">
+            <div class="card__title">
+                Algorithm Instances
+                <span class="endpoint-tag">/api/instances</span>
+            </div>
+            <div id="instance-state">Loading...</div>
+        </div>
+        
+        <!-- Agent Framework (Seed 22) -->
+        <div class="card card--full">
+            <div class="card__title">
+                Agent Framework
+                <span class="endpoint-tag">/api/debug/agents</span>
+            </div>
+            <div id="agent-state">Loading...</div>
+        </div>
+
+        <!-- Event Log -->
+        <div class="card card--full">
+            <div class="card__title">
+                Event Log
+                <span class="endpoint-tag" id="log-count">0 entries</span>
+            </div>
+            <div class="log-output" id="event-log"></div>
+            <div class="btn-row">
+                <button class="btn" onclick="MC.refresh()">↻ Refresh All</button>
+                <button class="btn" onclick="MC.clearLog()">Clear Log</button>
+                <button class="btn" onclick="MC.runHealthCheck()">Run Health Check</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="refresh-note">
+        Auto-refreshes every 5 seconds · <span id="last-refresh">—</span>
+    </div>
+
+<script>
+const MC = {
+    pollInterval: null,
+    logEntries: [],
+    _apiErrors: {},       // track consecutive API failures per endpoint
+    _lastRefresh: null,
+    _refreshCount: 0,
+    
+    init() {
+        this.log('info', 'Mission Control initialized');
+        this.refresh();
+        this.pollInterval = setInterval(() => this.refresh(), 5000);
+    },
+    
+    async refresh() {
+        this._refreshCount++;
+        this._lastRefresh = new Date();
+        document.getElementById('last-refresh').textContent = 
+            this._lastRefresh.toLocaleTimeString() + ` (#${this._refreshCount})`;
+        
+        await Promise.allSettled([
+            this.fetchSystem(),
+            this.fetchHealth(),
+            this.fetchTraders(),
+            this.fetchInstances(),
+            this.fetchSentiments(),
+            this.fetchAgents()
+        ]);
+    },
+    
+    // ── Safe fetch wrapper with error tracking ──
+    async safeFetch(url, label) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) {
+                const errKey = url;
+                this._apiErrors[errKey] = (this._apiErrors[errKey] || 0) + 1;
+                if (this._apiErrors[errKey] <= 2) {
+                    this.log('error', `${label}: HTTP ${res.status} ${res.statusText}`);
+                }
+                return { _error: true, _status: res.status, _statusText: res.statusText, _url: url };
+            }
+            this._apiErrors[url] = 0; // reset on success
+            return await res.json();
+        } catch (e) {
+            const errKey = url;
+            this._apiErrors[errKey] = (this._apiErrors[errKey] || 0) + 1;
+            if (this._apiErrors[errKey] <= 2) {
+                this.log('error', `${label}: ${e.message}`);
+            }
+            return { _error: true, _message: e.message, _url: url };
+        }
+    },
+    
+    renderError(data, label) {
+        if (!data || !data._error) return '';
+        const detail = data._status 
+            ? `HTTP ${data._status} — ${data._statusText}` 
+            : data._message || 'Unknown error';
+        return `<div class="error-inline">✗ ${label}: ${detail}<br><span style="font-size:9px;opacity:0.7;">Endpoint: ${data._url}</span></div>`;
+    },
+
+    // ── System Clock + Schedule ──
+    async fetchSystem() {
+        const el = document.getElementById('system-state');
+        const now = new Date();
+        const minute = now.getMinutes();
+        const second = now.getSeconds();
+        
+        // Next scheduled ticks
+        const schedule15m = [1, 16, 31, 46];
+        const next15m = schedule15m.find(m => m > minute) ?? (schedule15m[0] + 60);
+        const minsUntil15m = next15m > 59 ? (next15m - minute) : (next15m - minute);
+        const secsUntil15m = (minsUntil15m * 60) - second;
+        
+        const next1h = minute < 2 ? 2 : 62;
+        const minsUntil1h = next1h - minute;
+        
+        // Progress bar for next 15m tick
+        const totalCycleSeconds = 15 * 60; // 15 min cycle
+        const progressPct = Math.max(0, Math.min(100, ((totalCycleSeconds - secsUntil15m) / totalCycleSeconds) * 100));
+        
+        el.innerHTML = `
+            <div class="stat-row">
+                <span class="stat-row__label">Time</span>
+                <span class="stat-row__value stat-row__value--teal">${now.toLocaleTimeString()}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-row__label">Next 15m tick</span>
+                <span class="stat-row__value">:${String(next15m > 59 ? next15m - 60 : next15m).padStart(2,'0')} (${minsUntil15m}m ${60-second}s)</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-row__label">Next 1h tick</span>
+                <span class="stat-row__value">:02 (${minsUntil1h}m)</span>
+            </div>
+            <div class="countdown-bar"><div class="countdown-bar__fill" style="width:${progressPct}%"></div></div>
+        `;
+    },
+    
+    // ── Subsystem Health ──
+    async fetchHealth() {
+        const el = document.getElementById('health-state');
+        const data = await this.safeFetch('/api/debug/health', 'Health Check');
+        
+        if (data._error) {
+            el.innerHTML = this.renderError(data, 'Health endpoint not responding') +
+                `<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">
+                    Ensure flask_apex.py has the /api/debug/health route registered.
+                </div>`;
+            return;
+        }
+        
+        const chip = (label, ok, detail) => `
+            <div class="health-chip">
+                <span class="health-chip__label">${label}</span>
+                <span class="badge badge--${ok ? 'ok' : 'fail'}">${ok ? (detail || 'OK') : (detail || 'FAIL')}</span>
+            </div>`;
+        
+        let html = '<div class="health-grid">';
+        html += chip('Flask', data.flask);
+        html += chip('Instance DB', data.instance_db);
+        html += chip('Sentiment Engine', data.sentiment_engine);
+        html += chip('Trader Routes', data.trader_routes);
+        
+        if (data.trader_manager) {
+            html += chip('Traders Running', true, String(data.trader_manager.running_count));
+        }
+        if (data.databases) {
+            html += chip('Active Instances', data.databases.active_instances > 0, String(data.databases.active_instances || 0));
+            html += chip('Active Profiles', data.databases.active_profiles > 0, String(data.databases.active_profiles || 0));
+            
+            // Sentiment table row counts
+            const sentTables = data.databases.sentiment_tables || {};
+            const sentCount = Object.values(sentTables).reduce((a, b) => a + Math.max(0, b), 0);
+            html += chip('Sentiment Rows', sentCount > 0, String(sentCount));
+        }
+        html += '</div>';
+        
+        // Show errors if any
+        if (data.errors && data.errors.length > 0) {
+            html += '<hr class="section-sep">';
+            data.errors.forEach(err => {
+                html += `<div class="error-inline">✗ ${err}</div>`;
+            });
+        }
+        
+        // Show registered API endpoints count
+        const endpointCount = Object.keys(data.endpoints || {}).length;
+        html += `<div style="font-size:9px;color:var(--text-dim);margin-top:6px;">${endpointCount} API endpoints registered</div>`;
+        
+        el.innerHTML = html;
+    },
+    
+    // ── Traders ──
+    async fetchTraders() {
+        const el = document.getElementById('trader-state');
+        const data = await this.safeFetch('/api/trader/status', 'Trader Status');
+        
+        if (data._error) {
+            el.innerHTML = this.renderError(data, 'Trader status endpoint') +
+                `<div style="font-size:10px;color:var(--gold);margin-top:4px;">
+                    ⚠ trader_routes may not be registered in flask_apex.py
+                </div>`;
+            return;
+        }
+        
+        const traders = data.traders || {};
+        const entries = Object.entries(traders);
+        
+        if (entries.length === 0) {
+            el.innerHTML = `
+                <div class="stat-row">
+                    <span class="stat-row__label">No traders running</span>
+                    <span class="badge badge--idle">IDLE</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-row__label stat-row__value--dim" style="font-size:10px;">
+                        Activate a trader from the APEX instance panel
+                    </span>
+                </div>`;
+            return;
+        }
+        
+        const fmtRuntime = (s) => {
+            if (s > 3600) return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+            if (s > 60) return `${Math.floor(s/60)}m ${Math.round(s%60)}s`;
+            return `${Math.round(s)}s`;
+        };
+        
+        el.innerHTML = `
+            <table class="trader-table">
+                <thead><tr>
+                    <th>Instance</th><th>Symbol</th><th>PID</th>
+                    <th>State</th><th>Runtime</th><th>RC</th><th></th>
+                </tr></thead>
+                <tbody>
+                    ${entries.map(([id, t]) => `
+                        <tr>
+                            <td title="${id}">${id.substring(0, 20)}...</td>
+                            <td>${t.symbol || '—'}</td>
+                            <td>${t.pid}</td>
+                            <td><span class="badge badge--${t.state === 'running' ? 'running' : 'crashed'}">${t.state}</span></td>
+                            <td>${fmtRuntime(t.runtime_seconds)}</td>
+                            <td>${t.return_code !== null && t.return_code !== undefined ? t.return_code : '—'}</td>
+                            <td style="display:flex;gap:4px;">
+                                <button class="btn" onclick="MC.viewLog('${id}')" style="padding:2px 8px;font-size:10px;">Log</button>
+                                ${t.state === 'running' ? `<button class="btn btn--danger" onclick="MC.stopTrader('${id}')" style="padding:2px 8px;font-size:10px;">Stop</button>` : ''}
+                            </td>
+                        </tr>
+                        ${t.state === 'crashed' && t.last_output ? `
+                        <tr><td colspan="7">
+                            <div class="error-inline" style="white-space:pre-wrap;font-size:9px;max-height:120px;overflow-y:auto;">${MC.escapeHtml(t.last_output.slice(-600))}</div>
+                        </td></tr>` : ''}
+                    `).join('')}
+                </tbody>
+            </table>
+            <div class="stat-row" style="margin-top:6px;">
+                <span class="stat-row__label">Running</span>
+                <span class="stat-row__value stat-row__value--green">${data.running_count || 0}</span>
+            </div>
+        `;
+    },
+    
+    async stopTrader(instanceId) {
+        try {
+            const res = await fetch('/api/trader/stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ instance_id: instanceId })
+            });
+            const data = await res.json();
+            this.log(data.success ? 'success' : 'error', 
+                `Stop trader ${instanceId.substring(0,16)}: ${data.message || data.error}`);
+            this.refresh();
+        } catch (e) {
+            this.log('error', `Stop failed: ${e.message}`);
+        }
+    },
+    
+    // ── Instances ──
+    async fetchInstances() {
+        const el = document.getElementById('instance-state');
+        const data = await this.safeFetch('/api/instances', 'Instances');
+        
+        if (data._error) {
+            el.innerHTML = this.renderError(data, 'Instances endpoint');
+            return;
+        }
+        
+        // Support both flat array and legacy nested format
+        let instances = [];
+        if (Array.isArray(data.instances)) {
+            instances = data.instances;
+        } else if (data.instances && typeof data.instances === 'object') {
+            // Legacy format: {active: [...], archived: [...]}
+            instances = [...(data.instances.active || []), ...(data.instances.archived || [])];
+        }
+        
+        const activeInstances = instances.filter(i => i.status !== 'ARCHIVED');
+        
+        if (activeInstances.length === 0) {
+            el.innerHTML = '<div class="stat-row"><span class="stat-row__label">No instances found</span></div>';
+            return;
+        }
+        
+        el.innerHTML = `
+            <table class="trader-table">
+                <thead><tr>
+                    <th>Name</th><th>Symbol</th><th>Account</th>
+                    <th>Profile</th><th>Status</th>
+                </tr></thead>
+                <tbody>
+                    ${activeInstances.map(i => `
+                        <tr>
+                            <td title="${i.id}">${i.display_name || i.id.substring(0, 24)}</td>
+                            <td>${i.symbol || '—'}</td>
+                            <td>${i.account_type || '—'}</td>
+                            <td>${i.profile_id 
+                                ? `<span title="${i.profile_id}">${i.profile_id.substring(0, 10)}</span>` 
+                                : '<span class="badge badge--none">None</span>'}</td>
+                            <td><span class="badge badge--${i.status === 'ACTIVE' ? 'active' : 'stopped'}">${i.status}</span></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div class="stat-row" style="margin-top:4px;">
+                <span class="stat-row__label">Total active</span>
+                <span class="stat-row__value">${activeInstances.length}</span>
+            </div>
+        `;
+        
+        // Also fetch profile info
+        this.fetchProfile();
+    },
+    
+    async fetchProfile() {
+        const el = document.getElementById('profile-state');
+        const data = await this.safeFetch('/api/profile/list', 'Profile List');
+        
+        if (data._error) {
+            el.innerHTML = this.renderError(data, 'Profile list endpoint');
+            return;
+        }
+        
+        const profiles = data.profiles || [];
+        
+        if (profiles.length === 0) {
+            el.innerHTML = `
+                <div class="stat-row">
+                    <span class="stat-row__label">No profiles</span>
+                    <span class="badge badge--none">NONE</span>
+                </div>
+                <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">
+                    Create a profile in Profile Manager
+                </div>`;
+            return;
+        }
+        
+        el.innerHTML = profiles.slice(0, 4).map(p => {
+            const modelShort = (p.sentiment_model || '').split('-').pop() || '?';
+            return `
+                <div class="stat-row">
+                    <span class="stat-row__label">${p.name || p.id}</span>
+                    <span class="stat-row__value stat-row__value--gold">${p.symbol || '—'}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-row__label">Provider / Model</span>
+                    <span class="stat-row__value stat-row__value--dim">${p.provider || '?'} / ${modelShort}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-row__label">Threshold</span>
+                    <span class="stat-row__value">±${p.sentiment_threshold || '?'}</span>
+                </div>
+                ${profiles.indexOf(p) < profiles.length - 1 ? '<hr class="section-sep">' : ''}
+            `;
+        }).join('');
+    },
+    
+    // ── Sentiments ──
+    async fetchSentiments() {
+        const el = document.getElementById('sentiment-state');
+        
+        // Get instances first
+        const instData = await this.safeFetch('/api/instances', 'Sentiments→Instances');
+        if (instData._error) {
+            el.innerHTML = this.renderError(instData, 'Could not load instances for sentiment check');
+            return;
+        }
+        
+        // Support both flat and nested format
+        let allInstances = [];
+        if (Array.isArray(instData.instances)) {
+            allInstances = instData.instances;
+        } else if (instData.instances && typeof instData.instances === 'object') {
+            allInstances = [...(instData.instances.active || []), ...(instData.instances.archived || [])];
+        }
+        
+        allInstances = allInstances.filter(i => i.status !== 'ARCHIVED');
+        
+        if (allInstances.length === 0) {
+            el.innerHTML = '<div class="stat-row"><span class="stat-row__label">No instances to check</span></div>';
+            return;
+        }
+        
+        // Also get running traders for the ⚡ indicator
+        const traderData = await this.safeFetch('/api/trader/status', 'Sentiments→Traders');
+        const runningIds = Object.keys((traderData && !traderData._error) ? (traderData.traders || {}) : {});
+        
+        let html = '';
+        
+        for (const inst of allInstances.slice(0, 8)) {
+            const sData = await this.safeFetch(
+                `/api/instance/${inst.id}/sentiments/latest`, 
+                `Sentiment:${(inst.display_name || inst.symbol || '').substring(0, 12)}`
+            );
+            
+            if (sData._error) {
+                html += `<div class="stat-row">
+                    <span class="stat-row__label">${inst.display_name || inst.symbol}</span>
+                    <span class="badge badge--fail">Error</span>
+                </div>`;
+                html += `<div class="error-inline" style="font-size:9px;">
+                    ${sData._status ? `HTTP ${sData._status}` : sData._message} — ${sData._url}
+                </div>`;
+                continue;
+            }
+            
+            if (!sData.success) {
+                html += `<div class="stat-row">
+                    <span class="stat-row__label">${inst.display_name || inst.symbol}</span>
+                    <span class="badge badge--fail">${sData.error || 'Failed'}</span>
+                </div>`;
+                continue;
+            }
+            
+            if (!sData['15m'] && !sData['1h']) {
+                const isRunning = runningIds.includes(inst.id);
+                html += `<div class="stat-row">
+                    <span class="stat-row__label">${inst.display_name || inst.symbol} ${isRunning ? '<span class="pulse" style="color:var(--green);">⚡</span>' : ''}</span>
+                    <span class="badge badge--none">No sentiment data</span>
+                </div>`;
+                continue;
+            }
+            
+            const isRunning = runningIds.includes(inst.id);
+            html += `<div class="stat-row" style="margin-top:4px;">
+                <span class="stat-row__label" style="font-weight:600;color:var(--text-mid);">
+                    ${inst.display_name || inst.symbol} ${isRunning ? '<span class="pulse" style="color:var(--green);">⚡ LIVE</span>' : ''}
+                </span>
+            </div>`;
+            
+            for (const tf of ['15m', '1h']) {
+                const r = sData[tf];
+                if (!r) {
+                    if (sData[`${tf}_error`]) {
+                        html += `<div class="error-inline" style="font-size:9px;">${tf}: ${sData[`${tf}_error`]}</div>`;
+                    }
+                    continue;
+                }
+                
+                const comp = r.composite_score || 0;
+                const cons = r.consensus_score ?? comp;
+                const signal = r.signal_direction || 'HOLD';
+                const met = r.meets_threshold ? '✓ MET' : '· NOT MET';
+                const signalClass = signal === 'BUY' ? 'bull' : signal === 'SELL' ? 'bear' : 'neutral';
+                const time = r.timestamp 
+                    ? new Date(r.timestamp).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false}) 
+                    : '—';
+                
+                const cls = v => v > 0.2 ? 'sentiment-mini__val--bull' : v < -0.2 ? 'sentiment-mini__val--bear' : 'sentiment-mini__val--neutral';
+                
+                html += `
+                    <div style="margin: 3px 0 6px 0;">
+                        <div style="font-size:9px;color:var(--text-dim);margin-bottom:3px;">
+                            ${tf.toUpperCase()} @ ${time} — 
+                            <span class="sentiment-mini__val--${signalClass}" style="font-weight:700;">${signal}</span>
+                            <span style="color:${r.meets_threshold ? 'var(--green)' : 'var(--text-dim)'}"> ${met}</span>
+                            ${r.source_model ? `<span style="margin-left:8px;opacity:0.4;">${r.source_model.split('-').pop()}</span>` : ''}
+                            ${r.processing_time_ms ? `<span style="margin-left:4px;opacity:0.4;">${r.processing_time_ms}ms</span>` : ''}
+                        </div>
+                        <div class="sentiment-mini">
+                            <div><div class="sentiment-mini__header">PA</div><div class="sentiment-mini__val ${cls(r.price_action_score)}">${(r.price_action_score||0).toFixed(2)}</div></div>
+                            <div><div class="sentiment-mini__header">KL</div><div class="sentiment-mini__val ${cls(r.key_levels_score)}">${(r.key_levels_score||0).toFixed(2)}</div></div>
+                            <div><div class="sentiment-mini__header">MOM</div><div class="sentiment-mini__val ${cls(r.momentum_score)}">${(r.momentum_score||0).toFixed(2)}</div></div>
+                            <div><div class="sentiment-mini__header">ATH</div><div class="sentiment-mini__val ${cls(r.ath_score)}">${(r.ath_score||0).toFixed(2)}</div></div>
+                            <div><div class="sentiment-mini__header">STR</div><div class="sentiment-mini__val ${cls(r.structure_score)}">${(r.structure_score||0).toFixed(2)}</div></div>
+                            <div><div class="sentiment-mini__header">COMP</div><div class="sentiment-mini__val ${cls(comp)}" style="font-size:11px;">${comp.toFixed(3)}</div></div>
+                            <div><div class="sentiment-mini__header">CONS</div><div class="sentiment-mini__val ${cls(cons)}" style="font-size:11px;">${cons.toFixed(3)}</div></div>
+                        </div>
+                    </div>
+                `;
+            }
+            html += '<hr class="section-sep">';
+        }
+        
+        el.innerHTML = html || '<div class="stat-row"><span class="stat-row__label">No sentiment data</span></div>';
+    },
+    
+    // ── Agent Framework (Seed 22) ──
+    async fetchAgents() {
+        const el = document.getElementById('agent-state');
+        const data = await this.safeFetch('/api/debug/agents', 'Agent Framework');
+
+        if (data._error) {
+            el.innerHTML = this.renderError(data, 'Agent debug endpoint') +
+                '<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">Restart init2.py to load new /api/debug/agents route</div>';
+            return;
+        }
+
+        let html = '';
+
+        // ── Import Status ──
+        const fwOk = data.framework_available;
+        const cfgOk = data.config_available;
+        html += '<div class="health-grid">';
+        html += `<div class="health-chip"><span class="health-chip__label">agent_framework</span><span class="badge badge--${fwOk ? 'ok' : 'fail'}">${fwOk ? 'OK' : 'MISSING'}</span></div>`;
+        html += `<div class="health-chip"><span class="health-chip__label">agent_config</span><span class="badge badge--${cfgOk ? 'ok' : 'fail'}">${cfgOk ? 'OK' : 'MISSING'}</span></div>`;
+
+        // Agent module imports
+        const imports = data.imports || {};
+        const agentMods = Object.entries(imports).filter(([k]) => k.startsWith('agents.'));
+        agentMods.forEach(([mod, ok]) => {
+            const short = mod.replace('agents.', '');
+            html += `<div class="health-chip"><span class="health-chip__label">${short}</span><span class="badge badge--${ok ? 'ok' : 'none'}">${ok ? '✓' : '·'}</span></div>`;
+        });
+        html += '</div>';
+
+        // ── Mode Presets ──
+        if (data.mode_presets) {
+            html += '<hr class="section-sep">';
+            html += '<div style="font-size:9px;color:var(--text-dim);margin-bottom:4px;">MODE PRESETS</div>';
+            Object.entries(data.mode_presets).forEach(([mode, agents]) => {
+                html += `<div class="stat-row"><span class="stat-row__label">${mode}</span><span class="stat-row__value stat-row__value--dim" style="font-size:10px;">${agents.join(', ')}</span></div>`;
+            });
+        }
+
+        // ── Agent Roster ──
+        if (data.agent_roster && data.agent_roster.length > 0) {
+            html += '<hr class="section-sep">';
+            html += '<div style="font-size:9px;color:var(--text-dim);margin-bottom:4px;">AGENT ROSTER</div>';
+            html += '<table class="trader-table"><thead><tr><th>Agent</th><th>Role</th><th>Tier</th><th>Vectors</th></tr></thead><tbody>';
+            data.agent_roster.forEach(a => {
+                const tierColor = a.tier === 1 ? 'teal' : a.tier === 2 ? 'gold' : 'dim';
+                html += `<tr>
+                    <td>${a.id}</td>
+                    <td style="font-size:10px;color:var(--text-dim);">${a.role || '—'}</td>
+                    <td><span class="stat-row__value stat-row__value--${tierColor}">T${a.tier || '?'}</span></td>
+                    <td style="font-size:9px;color:var(--text-dim);">${(a.vectors || []).join(', ') || '—'}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+        }
+
+        // ── Profiles with Agent Config ──
+        const profiles = data.profiles_with_agents || [];
+        if (profiles.length > 0) {
+            html += '<hr class="section-sep">';
+            html += '<div style="font-size:9px;color:var(--text-dim);margin-bottom:4px;">PROFILE CONFIGS</div>';
+            profiles.forEach(p => {
+                const enabledBadge = p.enabled
+                    ? '<span class="badge badge--ok">ON</span>'
+                    : '<span class="badge badge--stopped">OFF</span>';
+                html += `<div class="stat-row">
+                    <span class="stat-row__label">${p.profile_name || p.profile_id}</span>
+                    <span class="stat-row__value">${enabledBadge} 
+                        <span class="badge badge--active">${(p.mode || 'budget').toUpperCase()}</span>
+                        <span style="font-size:9px;color:var(--text-dim);margin-left:6px;">
+                            ${p.debate_rounds}r · ${p.timeout}s timeout ${p.markov ? '· markov' : ''}
+                        </span>
+                    </span>
+                </div>`;
+            });
+        } else {
+            html += '<hr class="section-sep">';
+            html += '<div class="stat-row"><span class="stat-row__label">No profiles with agent config</span><span class="badge badge--none">NONE</span></div>';
+            html += '<div style="font-size:10px;color:var(--text-dim);">Save agent settings in Profile Manager to see them here</div>';
+        }
+
+        // ── Latest Deliberations ──
+        const delibs = data.latest_deliberations || [];
+        if (delibs.length > 0) {
+            html += '<hr class="section-sep">';
+            html += '<div style="font-size:9px;color:var(--text-dim);margin-bottom:6px;">LATEST DEBATES</div>';
+
+            delibs.forEach(d => {
+                const time = d.timestamp ? new Date(d.timestamp).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false}) : '—';
+                const signalClass = d.signal === 'BUY' ? 'green' : d.signal === 'SELL' ? 'red' : 'dim';
+                const instance = (d.table || '').replace('sentiment_', '');
+
+                html += `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px;">`;
+
+                // Header row
+                html += `<div class="stat-row">
+                    <span class="stat-row__label">
+                        <span style="color:var(--gold);font-weight:600;">${instance.substring(0,20)}</span>
+                        <span style="margin-left:6px;">${d.timeframe || ''} @ ${time}</span>
+                    </span>
+                    <span>
+                        <span class="badge badge--active">${d.mode || '?'}</span>
+                        <span class="stat-row__value stat-row__value--${signalClass}" style="margin-left:6px;">${d.signal || 'HOLD'}</span>
+                        <span style="color:${d.met ? 'var(--green)' : 'var(--text-dim)'};font-size:10px;margin-left:4px;">${d.met ? '✓ MET' : '· NOT MET'}</span>
+                    </span>
+                </div>`;
+
+                // Timing + cost
+                const timing = d.timing || {};
+                if (timing.total_seconds || d.processing_ms) {
+                    html += `<div class="stat-row">
+                        <span class="stat-row__label">Timing</span>
+                        <span class="stat-row__value stat-row__value--dim" style="font-size:10px;">
+                            ${timing.total_seconds ? timing.total_seconds.toFixed(1) + 's total' : (d.processing_ms || 0) + 'ms'}
+                            ${timing.phase1_analysts ? ' · analysts ' + timing.phase1_analysts.toFixed(1) + 's' : ''}
+                            ${timing.phase2_debate ? ' · debate ' + timing.phase2_debate.toFixed(1) + 's' : ''}
+                            ${timing.phase3_risk ? ' · risk ' + timing.phase3_risk.toFixed(1) + 's' : ''}
+                        </span>
+                    </div>`;
+                }
+
+                // Active agents
+                if (d.active_agents && d.active_agents.length > 0) {
+                    html += `<div class="stat-row">
+                        <span class="stat-row__label">Agents</span>
+                        <span class="stat-row__value stat-row__value--dim" style="font-size:10px;">${d.active_agents.join(' → ')}</span>
+                    </div>`;
+                }
+
+                // Analyst results
+                const analysts = d.analysts || [];
+                if (analysts.length > 0) {
+                    html += '<div style="margin:6px 0 2px 0;font-size:9px;color:var(--text-dim);">ANALYSTS</div>';
+                    html += '<div class="health-grid">';
+                    analysts.forEach(a => {
+                        const adj = a.adjustments || {};
+                        const adjStr = Object.entries(adj).map(([k,v]) => `${k.replace('_score','').substring(0,3)}:${v > 0 ? '+' : ''}${v.toFixed(2)}`).join(' ');
+                        const confColor = a.confidence === 'high' ? 'green' : a.confidence === 'low' ? 'red' : 'gold';
+                        html += `<div class="health-chip" style="flex-direction:column;align-items:flex-start;gap:2px;">
+                            <div style="display:flex;justify-content:space-between;width:100%;">
+                                <span class="health-chip__label" style="font-weight:600;">${a.id || '?'}</span>
+                                <span class="badge badge--${confColor === 'green' ? 'ok' : confColor === 'red' ? 'fail' : 'warn'}" style="font-size:8px;">${a.confidence || '?'}</span>
+                            </div>
+                            <div style="font-size:9px;color:var(--text-dim);">${adjStr || 'no adjustments'}</div>
+                            ${a.flags && a.flags.length > 0 ? '<div style="font-size:8px;color:var(--gold);">⚠ ' + a.flags.join(', ') + '</div>' : ''}
+                        </div>`;
+                    });
+                    html += '</div>';
+                }
+
+                // Bull vs Bear
+                const bull = d.bull || {};
+                const bear = d.bear || {};
+                if (bull.confidence || bear.confidence) {
+                    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">';
+
+                    // Bull
+                    html += '<div style="background:rgba(80,200,112,0.05);border:1px solid rgba(80,200,112,0.15);border-radius:4px;padding:6px 8px;">';
+                    html += '<div style="font-size:9px;color:var(--green);font-weight:700;margin-bottom:3px;">▲ BULL</div>';
+                    html += `<div class="stat-row"><span class="stat-row__label">Confidence</span><span class="stat-row__value stat-row__value--green">${bull.confidence || '—'}</span></div>`;
+                    html += `<div class="stat-row"><span class="stat-row__label">Strongest</span><span class="stat-row__value stat-row__value--dim" style="font-size:10px;">${bull.strongest || '—'}</span></div>`;
+                    if (bull.flags && bull.flags.length > 0) {
+                        html += `<div style="font-size:8px;color:var(--green);margin-top:2px;">${bull.flags.join(', ')}</div>`;
+                    }
+                    html += '</div>';
+
+                    // Bear
+                    html += '<div style="background:rgba(200,80,80,0.05);border:1px solid rgba(200,80,80,0.15);border-radius:4px;padding:6px 8px;">';
+                    html += '<div style="font-size:9px;color:var(--red);font-weight:700;margin-bottom:3px;">▼ BEAR</div>';
+                    html += `<div class="stat-row"><span class="stat-row__label">Confidence</span><span class="stat-row__value stat-row__value--red">${bear.confidence || '—'}</span></div>`;
+                    html += `<div class="stat-row"><span class="stat-row__label">Weakest</span><span class="stat-row__value stat-row__value--dim" style="font-size:10px;">${bear.weakest || '—'}</span></div>`;
+                    if (bear.flags && bear.flags.length > 0) {
+                        html += `<div style="font-size:8px;color:var(--red);margin-top:2px;">${bear.flags.join(', ')}</div>`;
+                    }
+                    html += '</div>';
+
+                    html += '</div>';
+                }
+
+                // Risk Gate
+                const risk = d.risk || {};
+                if (risk.level) {
+                    const riskColor = risk.level === 'low' ? 'green' : risk.level === 'high' ? 'red' : 'gold';
+                    html += '<div style="margin-top:6px;">';
+                    html += `<div class="stat-row">
+                        <span class="stat-row__label">⊚ Risk Gate</span>
+                        <span>
+                            <span class="badge badge--${riskColor === 'green' ? 'ok' : riskColor === 'red' ? 'fail' : 'warn'}">${risk.level.toUpperCase()}</span>
+                            ${risk.veto ? '<span class="badge badge--fail" style="margin-left:4px;">VETO</span>' : ''}
+                        </span>
+                    </div>`;
+
+                    // Multipliers
+                    const mults = risk.multipliers || {};
+                    const multEntries = Object.entries(mults);
+                    if (multEntries.length > 0) {
+                        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">';
+                        multEntries.forEach(([k, v]) => {
+                            const mColor = v >= 0.8 ? 'var(--green)' : v >= 0.5 ? 'var(--gold)' : 'var(--red)';
+                            html += `<span style="font-size:9px;padding:2px 6px;background:var(--surface-2);border-radius:3px;">
+                                <span style="color:var(--text-dim);">${k.replace('_score','').substring(0,4)}</span>
+                                <span style="color:${mColor};font-weight:600;">×${typeof v === 'number' ? v.toFixed(2) : v}</span>
+                            </span>`;
+                        });
+                        html += '</div>';
+                    }
+
+                    if (risk.flags && risk.flags.length > 0) {
+                        html += `<div style="font-size:8px;color:var(--red);margin-top:3px;">⚠ ${risk.flags.join(', ')}</div>`;
+                    }
+                    html += '</div>';
+                }
+
+                // Final adjustments
+                const adj = d.final_adjustments || {};
+                const adjEntries = Object.entries(adj);
+                if (adjEntries.length > 0) {
+                    html += '<div style="margin-top:6px;">';
+                    html += '<div style="font-size:9px;color:var(--text-dim);margin-bottom:2px;">FINAL ADJUSTMENTS (post-risk)</div>';
+                    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+                    adjEntries.forEach(([k, v]) => {
+                        const color = v > 0.05 ? 'var(--green)' : v < -0.05 ? 'var(--red)' : 'var(--text-dim)';
+                        html += `<span style="font-size:11px;font-weight:600;color:${color};">${k.replace('_score','').substring(0,4)}: ${v > 0 ? '+' : ''}${typeof v === 'number' ? v.toFixed(3) : v}</span>`;
+                    });
+                    html += '</div></div>';
+                }
+
+                html += '</div>'; // close debate card
+            });
+        } else {
+            html += '<hr class="section-sep">';
+            html += '<div class="stat-row"><span class="stat-row__label">No agent debates recorded yet</span><span class="badge badge--none">AWAITING</span></div>';
+            html += '<div style="font-size:10px;color:var(--text-dim);">Run a live tick with agents enabled to see debate results here</div>';
+        }
+
+        // Errors
+        if (data.errors && data.errors.length > 0) {
+            html += '<hr class="section-sep">';
+            data.errors.forEach(err => {
+                html += `<div class="error-inline">✗ ${err}</div>`;
+            });
+        }
+
+        el.innerHTML = html;
+    },
+
+    // ── Manual Health Check ──
+    async runHealthCheck() {
+        this.log('info', 'Running manual health check...');
+        
+        const endpoints = [
+            ['/api/health', 'Flask Health'],
+            ['/api/debug/health', 'Debug Health'],
+            ['/api/trader/status', 'Trader Status'],
+            ['/api/instances', 'Instances'],
+            ['/api/profile/list', 'Profile List'],
+            ['/api/sentiment/status', 'Sentiment Engine'],
+            ['/api/debug/agents', 'Agent Framework'],
+        ];
+        
+        for (const [url, label] of endpoints) {
+            try {
+                const start = performance.now();
+                const res = await fetch(url);
+                const ms = Math.round(performance.now() - start);
+                
+                if (res.ok) {
+                    this.log('success', `${label}: ${res.status} OK (${ms}ms)`);
+                } else {
+                    this.log('error', `${label}: ${res.status} ${res.statusText} (${ms}ms)`);
+                }
+            } catch (e) {
+                this.log('error', `${label}: UNREACHABLE — ${e.message}`);
+            }
+        }
+        
+        this.log('info', 'Health check complete');
+    },
+    
+    // ── Trader Log Viewer ──
+    async viewLog(instanceId) {
+        const data = await this.safeFetch(`/api/trader/${instanceId}/log?lines=150`, 'Trader Log');
+        if (data._error) {
+            this.log('error', `Could not fetch log for ${instanceId.substring(0,16)}`);
+            return;
+        }
+        
+        // Show log in event log panel
+        this.log('info', `─── LOG: ${instanceId.substring(0,20)} (${data.state}) ───`);
+        if (data.output) {
+            const lines = data.output.split('\n').slice(-60);
+            lines.forEach(line => {
+                if (!line.trim()) return;
+                let level = 'info';
+                if (line.includes('ERROR') || line.includes('✗') || line.includes('FATAL')) level = 'error';
+                else if (line.includes('WARNING') || line.includes('⚠')) level = 'warn';
+                else if (line.includes('✓') || line.includes('SIGNAL') || line.includes('BUY') || line.includes('SELL')) level = 'success';
+                else if (line.includes('API') || line.includes('Claude')) level = 'api';
+                this.log(level, line);
+            });
+        } else {
+            this.log('warn', 'Log file is empty');
+        }
+        this.log('info', `─── END LOG (${data.log_path || 'unknown'}) ───`);
+    },
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+    
+    // ── Logging ──
+    log(level, message) {
+        const time = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+        this.logEntries.push({ time, level, message });
+        if (this.logEntries.length > 200) this.logEntries.shift();
+        this.renderLog();
+    },
+    
+    renderLog() {
+        const el = document.getElementById('event-log');
+        if (!el) return;
+        
+        el.innerHTML = this.logEntries.map(e => 
+            `<div class="log-entry log--${e.level}">[${e.time}] ${e.message}</div>`
+        ).join('');
+        el.scrollTop = el.scrollHeight;
+        
+        document.getElementById('log-count').textContent = `${this.logEntries.length} entries`;
+    },
+    
+    clearLog() {
+        this.logEntries = [];
+        this.renderLog();
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => MC.init());
+</script>
+</body>
+</html>

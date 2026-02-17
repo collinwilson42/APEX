@@ -49,14 +49,32 @@ class MT5AdvancedCollector:
                 print(f"[{self.symbol}] ✗ MT5 failed")
                 return False
         
-        info = mt5.symbol_info(self.symbol)
-        if info is None:
-            print(f"[{self.symbol}] ✗ Symbol not found")
-            return False
-        if not info.visible:
-            mt5.symbol_select(self.symbol, True)
+        # Resolve the actual MT5 symbol (handles .sim suffix mismatch)
+        self.mt5_symbol = self.symbol  # default: same as config
+        candidates = [self.symbol]
+        if self.symbol.lower().endswith('.sim'):
+            base = self.symbol[:-4]
+            candidates.append(base)
+            candidates.append(base + '.SIM')
         
-        print(f"[{self.symbol}] ✓ Connected")
+        resolved = False
+        for candidate in candidates:
+            info = mt5.symbol_info(candidate)
+            if info is not None:
+                if not info.visible:
+                    mt5.symbol_select(candidate, True)
+                self.mt5_symbol = candidate
+                resolved = True
+                break
+        
+        if not resolved:
+            print(f"[{self.symbol}] ✗ Symbol not found in MT5 (tried: {candidates})")
+            return False
+        
+        if self.mt5_symbol != self.symbol:
+            print(f"[{self.symbol}] Resolved MT5 symbol: '{self.mt5_symbol}'")
+        
+        print(f"[{self.symbol}] ✓ Connected (MT5: {self.mt5_symbol})")
         return True
 
     def calculate_indicators(self, history_rates):
@@ -239,8 +257,11 @@ class MT5AdvancedCollector:
             print(f"[{self.symbol}-{timeframe_str}] Unknown timeframe")
             return
         
+        # Use resolved MT5 symbol for data fetch, self.symbol for DB storage
+        mt5_sym = getattr(self, 'mt5_symbol', self.symbol)
+        
         # THE 2-BAR FIX: Fetch 2 bars instead of 1
-        rates = mt5.copy_rates_from_pos(self.symbol, tf_mt5, 0, 2)
+        rates = mt5.copy_rates_from_pos(mt5_sym, tf_mt5, 0, 2)
         if rates is None or len(rates) < 2:
             return
         
@@ -252,7 +273,7 @@ class MT5AdvancedCollector:
         self.last_bar_times[timeframe_str] = bar_time
         
         # Fetch history for indicator calculations
-        history = mt5.copy_rates_from_pos(self.symbol, tf_mt5, 0, ATH_LOOKBACK + 1)
+        history = mt5.copy_rates_from_pos(mt5_sym, tf_mt5, 0, ATH_LOOKBACK + 1)
         if history is None or len(history) < 50:
             print(f"[{self.symbol}-{timeframe_str}] Not enough data")
             return

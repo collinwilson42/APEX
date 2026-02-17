@@ -3,19 +3,19 @@
 
   "meta": {
     "name": "Maestro Gold V1 – First Run",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "symbol": "XAUJ26",
-    "description": "Conservative gold futures profile for TORRA first run."
+    "description": "Conservative gold futures profile for TORRA. Seed 24: dual screenshot regions."
   },
 
   "sentiment_weights": {
     "price_action": 0.30,
     "key_levels":   0.15,
     "momentum":     0.25,
-    "volume":       0.10,
+    "ath":          0.10,
     "structure":    0.20
   },
-  "_sentiment_weights_note": "Must sum to 1.0. Maps to: price_action_score, key_levels_score, momentum_score, volume_score, structure_score in sentiment table.",
+  "_sentiment_weights_note": "Must sum to 1.0. Maps to: price_action_score, key_levels_score, momentum_score, ath_score, structure_score in sentiment table.",
 
   "sentiment_model": "claude-sonnet-4-20250514",
   "sentiment_threshold": 0.55,
@@ -53,6 +53,24 @@
     "trailing_distance_points": 25,
     "sentiment_exit_enabled": true,
     "sentiment_exit_trigger": "reversal_flip"
+  },
+
+  "screenshot_regions": {
+    "_note": "mss capture regions in NATIVE screen pixels (3840x2140). Targets APEX three-panel layout.",
+    "15m": {
+      "_description": "TACTICAL panel — top chart + transition matrix",
+      "left": 1040,
+      "top": 200,
+      "width": 1840,
+      "height": 520
+    },
+    "1h": {
+      "_description": "TREND panel — middle chart + transition matrix",
+      "left": 1040,
+      "top": 710,
+      "width": 1840,
+      "height": 500
+    }
   },
 
   "pyramid_enabled": 0,

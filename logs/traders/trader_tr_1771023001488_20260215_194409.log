@@ -1,0 +1,82 @@
+
+============================================================
+  TORRA TRADER v3.1 — DUAL SCREENSHOT + MULTI-AGENT
+  Instance:  tr_1771023001488
+  Symbol:    XAUJ26.SIM
+  Profile:   XAUJ26.SIM Trading Profile (6bd1dfe7-824)
+  Model:     claude-sonnet-4-20250514
+  Threshold: +/-0.3
+  Weights:   PA:0.30 KL:0.15 MOM:0.25 ATH:0.10 STR:0.20
+  TF Blend:  15m:0.40 | 1h:0.60
+  Lot Size:  1
+  Signal:    C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+  Capture:   mss (per-timeframe regions)
+    15m:     left=1040, top=200, 1840x520
+    1h:      left=1040, top=710, 1840x500
+  Agents:    BUDGET mode (4 agents)
+             technical, bull_researcher, bear_researcher, risk_gate
+============================================================
+
+  Schedule:  15m@(1, 16, 31, 46) | 1h@(2,)
+  [run-now] Immediate first tick...
+
+---- 15M TICK @ 19:44 ────────────────────────────────────────
+  Config: BUY>=+0.300  SELL<=-0.300  lots=1  cd=300s
+  [capture] 15m chart via mss region (1040,200 1840x520)
+  [capture] Chart captured (191KB) via mss region
+2026-02-15 19:44:19,930 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  [score] Base -> PA:+0.60  KL:+0.40  MOM:+0.50  STR:+0.30
+  [agents] Debate (budget mode)...
+2026-02-15 19:44:24,045 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-15 19:44:24,045 [WARNING] [TechnicalAgent] JSON parse failed: Expecting value: line 4 column 25 (char 76)
+2026-02-15 19:44:24,045 [INFO]   🔹 technical: conf=low flags=['agent_error']
+2026-02-15 19:44:28,427 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-15 19:44:28,429 [INFO]   🐂 Bull: conf=low strongest=price_action
+2026-02-15 19:44:33,363 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-15 19:44:33,363 [INFO]   🐻 Bear: conf=low weakest=momentum
+2026-02-15 19:44:36,745 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-15 19:44:36,745 [INFO]   🛡️  Risk: level=medium veto=False
+2026-02-15 19:44:36,745 [INFO]   ⚖️  Final: PA=-0.017 KL=-0.017 MOM=-0.007 STR=-0.017 | 16782ms | risk=medium
+  [agents] Adjustments -> PA:-0.017  KL:-0.017  MOM:-0.007  STR:-0.017
+  [agents] Final blend -> PA:+0.58  KL:+0.38  MOM:+0.49  STR:+0.28
+  [score] Agent Debate (AGENT_DEBATE) -> 4 vectors (22763ms)
+  [ath] ATH score: -0.14 (43th pctl, MID_RANGE)
+[SentimentDB] Partner 1h is stale (114155s > 7200s) — using own composite only
+[SentimentDB] 15m HOLD — waiting for first 1h reading before trading
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=+0.398 consensus=+0.398 | HOLD ·
+  [db] Verdict: composite=+0.398 | partner=N/A | consensus=+0.398
+  [--] HOLD | threshold: NOT MET
+  [hold] No signal — holding
+
+  [heartbeat] 19:45 — waiting (next 15m tick at :46)
+
+---- 15M TICK @ 19:46 ────────────────────────────────────────
+  Config: BUY>=+0.300  SELL<=-0.300  lots=1  cd=300s
+  [capture] 15m chart via mss region (1040,200 1840x520)
+  [capture] Chart captured (189KB) via mss region
+2026-02-15 19:46:13,196 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  [score] Base -> PA:+0.60  KL:+0.40  MOM:+0.50  STR:+0.30
+  [agents] Debate (budget mode)...
+2026-02-15 19:46:18,643 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-15 19:46:18,646 [WARNING] [TechnicalAgent] JSON parse failed: Expecting value: line 4 column 25 (char 76)
+2026-02-15 19:46:18,656 [INFO]   🔹 technical: conf=low flags=['agent_error']
+2026-02-15 19:46:22,748 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-15 19:46:22,749 [INFO]   🐂 Bull: conf=low strongest=price_action
+2026-02-15 19:46:27,829 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-15 19:46:27,845 [INFO]   🐻 Bear: conf=low weakest=momentum
+2026-02-15 19:46:31,512 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-15 19:46:31,512 [INFO]   🛡️  Risk: level=medium veto=False
+2026-02-15 19:46:31,512 [INFO]   ⚖️  Final: PA=-0.017 KL=-0.007 MOM=-0.009 STR=-0.011 | 18315ms | risk=medium
+  [agents] Adjustments -> PA:-0.017  KL:-0.007  MOM:-0.009  STR:-0.011
+  [agents] Final blend -> PA:+0.58  KL:+0.39  MOM:+0.49  STR:+0.29
+  [score] Agent Debate (AGENT_DEBATE) -> 4 vectors (24578ms)
+  [ath] ATH score: -0.14 (43th pctl, MID_RANGE)
+[SentimentDB] Partner 1h is stale (114269s > 7200s) — using own composite only
+[SentimentDB] 15m HOLD — waiting for first 1h reading before trading
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=+0.400 consensus=+0.400 | HOLD ·
+  [db] Verdict: composite=+0.400 | partner=N/A | consensus=+0.400
+  [--] HOLD | threshold: NOT MET
+  [hold] No signal — holding
+  [heartbeat] 19:50 — waiting (next 15m tick at :01)

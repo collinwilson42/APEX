@@ -1,0 +1,45 @@
+
+════════════════════════════════════════════════════════════
+  🔷 TORRA TRADER v2.0 — CONFIG-FIRST EXECUTOR
+  Instance:  tr_1770996647772
+  Symbol:    XAUJ26
+  Profile:   Sonnet v1 (7135160e-21a)
+  Model:     claude-sonnet-4-20250514
+  Threshold: ±0.5
+  Weights:   PA:0.12 KL:0.16 MOM:0.28 ATH:0.10 STR:0.34
+  TF Blend:  15m:0.40 | 1h:0.60
+  Lot Size:  1
+  Signal:    C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+════════════════════════════════════════════════════════════
+
+  Schedule:  15m@(1, 16, 31, 46) | 1h@(2,)
+  🚀 Immediate first tick (--run-now)...
+
+──── 15M TICK @ 17:50 ────────────────────────────────────────
+  📸 Screenshot captured (294KB)
+2026-02-13 17:50:20,978 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  🤖 Claude API → 4 visual vectors (6022ms)
+     PA:-0.10  KL:+0.00  MOM:-0.20  STR:-0.10
+  📊 ATH score: -0.14 (43th pctl, MID_RANGE)
+2026-02-13 17:50:21,124 [ERROR]   💾 DB save FAILED: no such table: markov_matrices_tr_1770996647772 — refusing to trade
+
+  💓 17:55 — waiting (next 15m tick at :01)
+  💓 18:00 — waiting (next 15m tick at :01)
+
+──── 15M TICK @ 18:01 ────────────────────────────────────────
+  📸 Screenshot captured (260KB)
+2026-02-13 18:01:07,202 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  🤖 Claude API → 4 visual vectors (5606ms)
+     PA:-0.10  KL:+0.00  MOM:-0.20  STR:-0.10
+  📊 ATH score: -0.14 (43th pctl, MID_RANGE)
+2026-02-13 18:01:07,246 [ERROR]   💾 DB save FAILED: no such table: markov_matrices_tr_1770996647772 — refusing to trade
+
+──── 1H TICK @ 18:02 ────────────────────────────────────────
+  📸 Screenshot captured (265KB)
+2026-02-13 18:02:13,808 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  🤖 Claude API → 4 visual vectors (6112ms)
+     PA:-0.10  KL:+0.00  MOM:-0.20  STR:-0.10
+  📊 ATH score: -0.14 (43th pctl, MID_RANGE)
+2026-02-13 18:02:13,850 [ERROR]   💾 DB save FAILED: no such table: markov_matrices_tr_1770996647772 — refusing to trade
+  💓 18:05 — waiting (next 15m tick at :16)
+  💓 18:10 — waiting (next 15m tick at :16)

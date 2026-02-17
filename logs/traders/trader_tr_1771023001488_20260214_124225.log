@@ -1,0 +1,28 @@
+
+════════════════════════════════════════════════════════════
+  🔷 TORRA TRADER v3.0 — MULTI-AGENT DECISION FRAMEWORK
+  Instance:  tr_1771023001488
+  Symbol:    XAUJ26.SIM
+  Profile:   XAUJ26.SIM Trading Profile (6bd1dfe7-824)
+  Model:     claude-sonnet-4-20250514
+  Threshold: ±0.5
+  Weights:   PA:0.12 KL:0.16 MOM:0.28 ATH:0.10 STR:0.34
+  TF Blend:  15m:0.40 | 1h:0.60
+  Lot Size:  1
+  Signal:    C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+  Capture:   mss (monitor screenshot)
+  Agents:    BUDGET mode (4 agents)
+             technical, bull_researcher, bear_researcher, risk_gate
+════════════════════════════════════════════════════════════
+
+  Schedule:  15m@(1, 16, 31, 46) | 1h@(2,)
+  🚀 Immediate first tick (--run-now)...
+
+──── 15M TICK @ 12:42 ────────────────────────────────────────
+  Config: BUY>=+0.500  SELL<=-0.500  lots=1  cd=30s
+  📸 Chart captured (329KB) via mss fullscreen
+2026-02-14 12:42:39,246 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-14 12:42:39,306 [ERROR] JSON parse failed: Expecting value: line 1 column 1 (char 0)
+[SentimentDB] 15m | composite=+0.000 consensus=-0.008 | HOLD ·
+  💾 Saved error row (API_ERROR) — signal: HOLD
+

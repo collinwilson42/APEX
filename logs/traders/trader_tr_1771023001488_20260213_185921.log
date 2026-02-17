@@ -1,0 +1,31 @@
+
+════════════════════════════════════════════════════════════
+  🔷 TORRA TRADER v2.0 — CONFIG-FIRST EXECUTOR
+  Instance:  tr_1771023001488
+  Symbol:    XAUJ26.SIM
+  Profile:   XAUJ26.SIM Trading Profile (6bd1dfe7-824)
+  Model:     claude-sonnet-4-20250514
+  Threshold: BUY≥+0.950  SELL≤-0.950
+  Weights:   PA:0.12 KL:0.16 MOM:0.28 ATH:0.10 STR:0.34
+  TF Blend:  15m:0.40 | 1h:0.60
+  Risk:      lots=1 | cooldown=300s | max=3/hr
+  Signal:    C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+  Sig Dir:   ✓ exists
+════════════════════════════════════════════════════════════
+
+  Schedule:  15m@(1, 16, 31, 46) | 1h@(2,)
+  🚀 Immediate first tick (--run-now)...
+
+──── 15M TICK @ 18:59 ────────────────────────────────────────
+  📸 Screenshot captured (264KB)
+2026-02-13 18:59:38,880 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  🤖 Claude API → 4 visual vectors (5929ms)
+     PA:+0.60  KL:+0.40  MOM:+0.50  STR:+0.30
+  📊 ATH score: +0.00 (50th pctl, UNKNOWN)
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=+0.378 consensus=+0.378 | HOLD ·
+  💾 DB verdict: composite=+0.378 | partner=N/A | consensus=+0.378
+  ⚪ HOLD | threshold: NOT MET ·
+  ⏸️  No signal — holding
+
+  💓 19:00 — waiting (next 15m tick at :01)

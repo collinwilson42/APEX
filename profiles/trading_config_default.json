@@ -5,7 +5,7 @@
     "price_action": 0.30,
     "key_levels":   0.15,
     "momentum":     0.25,
-    "volume":       0.10,
+    "ath":          0.10,
     "structure":    0.20
   },
 
@@ -30,5 +30,23 @@
     "cooldown_seconds":      300,
     "consecutive_loss_halt": 2,
     "sentiment_exit":        true
+  },
+
+  "screenshot_regions": {
+    "_note": "mss capture regions in NATIVE screen pixels (3840x2140). Each timeframe gets its own region targeting the corresponding chart panel in the APEX three-panel layout.",
+    "15m": {
+      "_description": "TACTICAL panel — top chart in APEX algo view",
+      "left": 1040,
+      "top": 200,
+      "width": 1840,
+      "height": 520
+    },
+    "1h": {
+      "_description": "TREND panel — middle chart in APEX algo view",
+      "left": 1040,
+      "top": 710,
+      "width": 1840,
+      "height": 500
+    }
   }
 }

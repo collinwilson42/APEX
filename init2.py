@@ -72,7 +72,7 @@ except Exception as e:
 # ============================================================================
 
 sentiment_scheduler = None
-DEFAULT_SENTIMENT_SYMBOLS = ['XAUJ26', 'US100H26', 'BTCF26']
+DEFAULT_SENTIMENT_SYMBOLS = ['XAUJ26', 'US100', 'BTCUSD']
 
 try:
     from sentiment_engine import (
@@ -142,6 +142,19 @@ except ImportError as e:
     print(f"⚠️  Trader routes not available: {e}")
 except Exception as e:
     print(f"✗ Failed to register trader routes: {e}")
+
+# ============================================================================
+# CHART CAPTURE ROUTES (Seed 23 — Headless Plotly Export)
+# ============================================================================
+
+try:
+    from chart_capture import register_capture_routes
+    register_capture_routes(app)
+    print("✓ Chart capture routes registered")
+except ImportError as e:
+    print(f"⚠️  Chart capture not available: {e}")
+except Exception as e:
+    print(f"✗ Failed to register chart capture routes: {e}")
 
 # ============================================================================
 # INDICATOR CALCULATION
@@ -293,6 +306,98 @@ def calculate_indicators_for_fill(history_rates):
 # ============================================================================
 # DATABASE HELPERS
 # ============================================================================
+
+def ensure_symbol_database(db_path):
+    """Create the intelligence database with all required tables if it doesn't exist."""
+    if os.path.exists(db_path):
+        return
+    
+    print(f"  Creating new database: {os.path.basename(db_path)}")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Core OHLCV table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS core_15m (
+            timestamp TEXT NOT NULL,
+            timeframe TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            open REAL, high REAL, low REAL, close REAL, volume INTEGER,
+            PRIMARY KEY (timestamp, timeframe, symbol)
+        )
+    """)
+    
+    # Basic indicators
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS basic_15m (
+            timestamp TEXT NOT NULL,
+            timeframe TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            atr_14 REAL, atr_50_avg REAL, atr_ratio REAL,
+            ema_short REAL, ema_medium REAL, ema_distance REAL,
+            supertrend TEXT,
+            PRIMARY KEY (timestamp, timeframe, symbol)
+        )
+    """)
+    
+    # Advanced indicators — dynamic columns, create base structure
+    # Full columns are created on first INSERT OR REPLACE via the dynamic SQL
+    adv_cols = []
+    for p in range(1, 15):
+        adv_cols += [f'rsi_{p} REAL', f'cci_{p} REAL', f'stoch_k_{p} REAL', f'stoch_d_{p} REAL',
+                     f'williams_r_{p} REAL', f'adx_{p} REAL', f'momentum_{p} REAL', f'roc_{p} REAL']
+    for p in range(1, 14):
+        adv_cols.append(f'atr_{p} REAL')
+    adv_cols += [
+        'bb_upper_20 REAL', 'bb_middle_20 REAL', 'bb_lower_20 REAL', 'bb_width_20 REAL', 'bb_pct_20 REAL',
+        'macd_line_12_26 REAL', 'macd_signal_12_26 REAL', 'macd_histogram_12_26 REAL',
+        'obv REAL', 'volume_ma_20 REAL', 'volume_ratio REAL', 'cmf_20 REAL',
+        'sar REAL', 'sar_trend TEXT',
+        'ichimoku_tenkan REAL', 'ichimoku_kijun REAL', 'ichimoku_senkou_a REAL', 'ichimoku_senkou_b REAL',
+        'fib_pivot REAL', 'fib_r1 REAL', 'fib_r2 REAL', 'fib_r3 REAL',
+        'fib_s1 REAL', 'fib_s2 REAL', 'fib_s3 REAL'
+    ]
+    cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS advanced_indicators (
+            timestamp TEXT NOT NULL,
+            timeframe TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            {', '.join(adv_cols)},
+            PRIMARY KEY (timestamp, timeframe, symbol)
+        )
+    """)
+    
+    # Fibonacci data
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS fibonacci_data (
+            timestamp TEXT NOT NULL,
+            timeframe TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            pivot_high REAL, pivot_low REAL,
+            fib_level_0000 REAL, fib_level_0236 REAL, fib_level_0382 REAL, fib_level_0500 REAL,
+            fib_level_0618 REAL, fib_level_0786 REAL, fib_level_1000 REAL, fib_level_1272 REAL,
+            fib_level_1618 REAL, fib_level_2000 REAL, fib_level_2618 REAL, fib_level_3618 REAL, fib_level_4236 REAL,
+            current_fib_zone TEXT, in_golden_zone INTEGER, zone_multiplier REAL,
+            PRIMARY KEY (timestamp, timeframe, symbol)
+        )
+    """)
+    
+    # ATH tracking
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ath_tracking (
+            timestamp TEXT NOT NULL,
+            timeframe TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            current_ath REAL, current_close REAL,
+            ath_distance_pct REAL, ath_multiplier REAL, ath_zone TEXT,
+            PRIMARY KEY (timestamp, timeframe, symbol)
+        )
+    """)
+    
+    conn.commit()
+    conn.close()
+    print(f"  ✓ Database created: {os.path.basename(db_path)}")
+
 
 def get_symbol_db_path(symbol_id):
     return SYMBOL_DATABASES.get(symbol_id.upper(), {}).get('db_path')
@@ -455,12 +560,15 @@ def insert_bar(cursor, symbol, timeframe_str, latest, history, close_price, high
 # FULL BACKFILL (for empty databases)
 # ============================================================================
 
-def full_backfill_timeframe(symbol, db_path, timeframe_str, mt5_timeframe):
-    print(f"      [{timeframe_str}] Fetching {BACKFILL_MAX_BARS:,} bars...")
+def full_backfill_timeframe(symbol, db_path, timeframe_str, mt5_timeframe, db_symbol=None):
+    """Full backfill. symbol=MT5 symbol for data fetch, db_symbol=symbol stored in DB."""
+    db_symbol = db_symbol or symbol
+    print(f"      [{timeframe_str}] Fetching {BACKFILL_MAX_BARS:,} bars from MT5 symbol '{symbol}'...")
     
     rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, BACKFILL_MAX_BARS)
     if rates is None or len(rates) == 0:
-        print(f"      [{timeframe_str}] ✗ No data!")
+        error = mt5.last_error()
+        print(f"      [{timeframe_str}] ✗ No data from MT5! Error: {error}")
         return 0
     
     total = len(rates)
@@ -478,14 +586,16 @@ def full_backfill_timeframe(symbol, db_path, timeframe_str, mt5_timeframe):
         lows = np.array([float(r['low']) for r in history])
         
         try:
-            insert_bar(cursor, symbol, timeframe_str, latest, history, close_price, highs, lows)
+            insert_bar(cursor, db_symbol, timeframe_str, latest, history, close_price, highs, lows)
             inserted += 1
             
             if inserted % 5000 == 0:
                 conn.commit()
                 pct = (inserted / (total - ATH_LOOKBACK)) * 100
                 print(f"      [{timeframe_str}] ... {inserted:,} / {total - ATH_LOOKBACK:,} ({pct:.1f}%)")
-        except:
+        except Exception as e:
+            if inserted == 0:
+                print(f"      [{timeframe_str}] First insert error: {e}")
             pass
     
     conn.commit()
@@ -498,8 +608,9 @@ def full_backfill_timeframe(symbol, db_path, timeframe_str, mt5_timeframe):
 # GAP-ONLY FILL (for databases with sufficient data)
 # ============================================================================
 
-def fill_gaps_only(symbol, db_path, timeframe_str, mt5_timeframe, existing_timestamps):
-    """Fill ONLY the missing bars - not a full backfill."""
+def fill_gaps_only(symbol, db_path, timeframe_str, mt5_timeframe, existing_timestamps, db_symbol=None):
+    """Fill ONLY the missing bars. symbol=MT5 symbol, db_symbol=symbol stored in DB."""
+    db_symbol = db_symbol or symbol
     
     rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, 5000)
     if rates is None or len(rates) == 0:
@@ -532,9 +643,11 @@ def fill_gaps_only(symbol, db_path, timeframe_str, mt5_timeframe, existing_times
         lows = np.array([float(r['low']) for r in history])
         
         try:
-            insert_bar(cursor, symbol, timeframe_str, latest, history, close_price, highs, lows)
+            insert_bar(cursor, db_symbol, timeframe_str, latest, history, close_price, highs, lows)
             filled += 1
-        except:
+        except Exception as e:
+            if filled == 0:
+                print(f"      Gap fill first error: {e}")
             pass
     
     conn.commit()
@@ -547,6 +660,27 @@ def fill_gaps_only(symbol, db_path, timeframe_str, mt5_timeframe, existing_times
 # MAIN BACKFILL CHECK
 # ============================================================================
 
+def resolve_mt5_symbol(config_symbol):
+    """Resolve a config symbol to an actual MT5 symbol.
+    Tries: exact match, without .sim, base symbol.
+    Returns (mt5_symbol, success) tuple."""
+    candidates = [config_symbol]
+    
+    # Strip .sim/.SIM suffix
+    if config_symbol.lower().endswith('.sim'):
+        base = config_symbol[:-4]
+        candidates.append(base)
+        candidates.append(base + '.SIM')
+    
+    for candidate in candidates:
+        info = mt5.symbol_info(candidate)
+        if info is not None:
+            if mt5.symbol_select(candidate, True):
+                return candidate, True
+    
+    return config_symbol, False
+
+
 def run_backfill_check():
     if not MT5_AVAILABLE or not BACKFILL_ENABLED:
         print("[BACKFILL] Skipped")
@@ -558,9 +692,26 @@ def run_backfill_check():
     
     if not mt5.initialize():
         print("[BACKFILL] ✗ MT5 connection failed")
+        # Diagnostic: show MT5 error
+        error = mt5.last_error()
+        if error:
+            print(f"[BACKFILL]   Error: {error}")
         return
     
     print(f"[BACKFILL] ✓ Connected to MT5")
+    
+    # Show available symbols for diagnostics
+    all_symbols = mt5.symbols_get()
+    if all_symbols:
+        symbol_names = [s.name for s in all_symbols]
+        # Show which config symbols are available in MT5
+        for symbol_id, config in SYMBOL_DATABASES.items():
+            base = config['symbol'].replace('.sim', '').replace('.SIM', '')
+            matches = [s for s in symbol_names if base.lower() in s.lower()]
+            if matches:
+                print(f"  [{symbol_id}] MT5 matches: {matches[:5]}")
+            else:
+                print(f"  [{symbol_id}] ⚠ No MT5 match for '{config['symbol']}' or '{base}'")
     
     # SEED 13: Migrated from 1m/15m to 15m/1h
     timeframes = {'15m': mt5.TIMEFRAME_M15, '1h': mt5.TIMEFRAME_H1}
@@ -568,15 +719,22 @@ def run_backfill_check():
     
     for symbol_id, config in SYMBOL_DATABASES.items():
         db_path = config['db_path']
-        symbol = config['symbol']
+        config_symbol = config['symbol']
         
-        if not os.path.exists(db_path):
-            print(f"\n  [{symbol_id}] DB not found - skip")
+        # Auto-create database if it doesn't exist
+        ensure_symbol_database(db_path)
+        
+        # Resolve the actual MT5 symbol (handles .sim suffix mismatch)
+        symbol, selected = resolve_mt5_symbol(config_symbol)
+        if not selected:
+            print(f"\n  [{symbol_id}] ✗ MT5 symbol not found: tried '{config_symbol}' and variants")
+            error = mt5.last_error()
+            if error:
+                print(f"    Last error: {error}")
             continue
         
-        if not mt5.symbol_select(symbol, True):
-            print(f"\n  [{symbol_id}] MT5 symbol error - skip")
-            continue
+        if symbol != config_symbol:
+            print(f"\n  [{symbol_id}] Resolved '{config_symbol}' → '{symbol}'")
         
         print(f"\n  [{symbol_id}] {config['name']}")
         
@@ -586,24 +744,35 @@ def run_backfill_check():
             
             if current < BACKFILL_MIN_BARS_THRESHOLD:
                 print(f"    [{tf_str}] FULL backfill needed...")
-                filled = full_backfill_timeframe(symbol, db_path, tf_str, tf_mt5)
+                filled = full_backfill_timeframe(symbol, db_path, tf_str, tf_mt5, db_symbol=config_symbol)
                 total_filled += filled
             else:
-                # Get existing timestamps
+                # Get existing timestamps — try BOTH config_symbol and resolved symbol
                 conn = sqlite3.connect(db_path)
                 cursor = conn.cursor()
-                cursor.execute("SELECT timestamp FROM core_15m WHERE symbol = ? AND timeframe = ?", (symbol, tf_str))
-                existing = set(row[0] for row in cursor.fetchall())
+                existing = set()
+                for sym_variant in set([config_symbol, symbol]):
+                    cursor.execute("SELECT timestamp FROM core_15m WHERE symbol = ? AND timeframe = ?", (sym_variant, tf_str))
+                    existing.update(row[0] for row in cursor.fetchall())
                 conn.close()
                 
-                # Check for gaps
+                if not existing and current > 0:
+                    # DB has records but symbol column doesn't match — diagnose
+                    conn = sqlite3.connect(db_path)
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT DISTINCT symbol FROM core_15m WHERE timeframe = ? LIMIT 5", (tf_str,))
+                    db_symbols = [row[0] for row in cursor.fetchall()]
+                    conn.close()
+                    print(f"    [{tf_str}] ⚠ Symbol mismatch! DB has: {db_symbols}, looking for: {config_symbol} or {symbol}")
+                
+                # Check for gaps using MT5 data
                 rates = mt5.copy_rates_from_pos(symbol, tf_mt5, 0, 5000)
                 if rates is not None:
                     missing = sum(1 for r in rates if datetime.fromtimestamp(r['time']).strftime('%Y-%m-%d %H:%M:%S') not in existing)
                     
                     if missing > 0:
                         print(f"    [{tf_str}] {missing} gaps found")
-                        filled = fill_gaps_only(symbol, db_path, tf_str, tf_mt5, existing)
+                        filled = fill_gaps_only(symbol, db_path, tf_str, tf_mt5, existing, db_symbol=config_symbol)
                         total_filled += filled
                     else:
                         print(f"    [{tf_str}] ✓ No gaps")
@@ -631,6 +800,233 @@ def metatron(): return send_from_directory('templates', 'cytobase.html')
 
 @app.route('/cytobase')
 def cytobase(): return send_from_directory('templates', 'cytobase.html')
+
+@app.route('/debug')
+def debug_page(): return render_template('debug.html')
+
+@app.route('/api/debug/health', methods=['GET'])
+def api_debug_health():
+    """Comprehensive system diagnostics for Mission Control."""
+    import sqlite3 as _sql
+    result = {
+        'flask': True,
+        'instance_db': instance_db is not None,
+        'sentiment_engine': sentiment_scheduler is not None,
+        'trader_routes': False,
+        'endpoints': {},
+        'databases': {},
+        'errors': []
+    }
+    
+    # Check trader routes
+    try:
+        from trader_routes import get_trader_manager
+        tm = get_trader_manager()
+        result['trader_routes'] = True
+        status = tm.get_status()
+        result['trader_manager'] = {
+            'running_count': status.get('running_count', 0),
+            'total_tracked': len(status.get('traders', {}))
+        }
+    except Exception as e:
+        result['errors'].append(f'trader_routes: {e}')
+    
+    # Scan instance database
+    if instance_db:
+        try:
+            all_inst = instance_db.get_all_instances()
+            active_count = len(all_inst.get('active', []))
+            archived_count = len(all_inst.get('archived', []))
+            result['databases']['active_instances'] = active_count
+            result['databases']['archived_instances'] = archived_count
+            
+            profiles = instance_db.get_all_profiles()
+            result['databases']['active_profiles'] = len([p for p in profiles if p.status != 'ARCHIVED'])
+            
+            # Count sentiment tables
+            try:
+                conn = instance_db._get_conn()
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'sentiment_%'")
+                sentiment_tables = {}
+                for row in cursor.fetchall():
+                    tname = row[0]
+                    try:
+                        cursor.execute(f"SELECT COUNT(*) FROM [{tname}]")
+                        sentiment_tables[tname] = cursor.fetchone()[0]
+                    except:
+                        sentiment_tables[tname] = -1
+                result['databases']['sentiment_tables'] = sentiment_tables
+            except Exception as e:
+                result['errors'].append(f'sentiment scan: {e}')
+        except Exception as e:
+            result['errors'].append(f'instance_db scan: {e}')
+    
+    # List registered endpoints
+    for rule in app.url_map.iter_rules():
+        if rule.rule.startswith('/api/'):
+            methods = sorted([m for m in rule.methods if m not in ('HEAD', 'OPTIONS')])
+            result['endpoints'][rule.rule] = methods
+    
+    return jsonify(result)
+
+
+@app.route('/api/debug/agents', methods=['GET'])
+def api_debug_agents():
+    """Seed 22: Agent framework diagnostics for Mission Control."""
+    import json as _json
+
+    result = {
+        'framework_available': False,
+        'config_available': False,
+        'imports': {},
+        'agent_roster': [],
+        'profiles_with_agents': [],
+        'latest_deliberations': [],
+        'errors': []
+    }
+
+    # Check core imports
+    try:
+        from agent_framework import run_debate, build_memory_context
+        result['framework_available'] = True
+        result['imports']['agent_framework'] = True
+    except ImportError as e:
+        result['imports']['agent_framework'] = False
+        result['errors'].append(f'agent_framework import: {e}')
+
+    try:
+        from agent_config import AGENT_ROSTER, MODE_PRESETS, DEFAULT_AGENT_CONFIG, resolve_agent_config
+        result['config_available'] = True
+        result['imports']['agent_config'] = True
+        result['default_config'] = DEFAULT_AGENT_CONFIG
+        result['mode_presets'] = {k: v.get('active_agents', []) for k, v in MODE_PRESETS.items()}
+        result['agent_roster'] = [
+            {'id': aid, 'role': info.get('role'), 'tier': info.get('tier'),
+             'vectors': info.get('primary_vectors', [])}
+            for aid, info in AGENT_ROSTER.items()
+        ]
+    except ImportError as e:
+        result['imports']['agent_config'] = False
+        result['errors'].append(f'agent_config import: {e}')
+
+    # Check each agent module
+    for mod_name, fn_name in [
+        ('agents.technical_agent', 'run_technical_agent'),
+        ('agents.bull_researcher', 'run_bull_researcher'),
+        ('agents.bear_researcher', 'run_bear_researcher'),
+        ('agents.risk_gate', 'run_risk_gate'),
+        ('agents.key_levels_agent', 'run_key_levels_agent'),
+        ('agents.momentum_agent', 'run_momentum_agent'),
+        ('agents.sentiment_agent', 'run_sentiment_agent'),
+        ('agents.news_agent', 'run_news_agent'),
+    ]:
+        try:
+            __import__(mod_name, fromlist=[fn_name])
+            result['imports'][mod_name] = True
+        except ImportError:
+            result['imports'][mod_name] = False
+
+    # Profiles with agent config
+    if instance_db:
+        try:
+            profiles = instance_db.get_all_profiles()
+            for p in profiles:
+                try:
+                    tc = _json.loads(p.trading_config) if isinstance(p.trading_config, str) else (p.trading_config or {})
+                except Exception:
+                    tc = {}
+                agent_cfg = tc.get('agents', {})
+                if agent_cfg:
+                    result['profiles_with_agents'].append({
+                        'profile_id': p.id[:16],
+                        'profile_name': p.name,
+                        'enabled': agent_cfg.get('enabled', True),
+                        'mode': agent_cfg.get('mode', 'budget'),
+                        'timeout': agent_cfg.get('timeout_seconds', 15),
+                        'debate_rounds': agent_cfg.get('debate_rounds', 1),
+                        'markov': agent_cfg.get('include_markov_context', True),
+                    })
+        except Exception as e:
+            result['errors'].append(f'profile scan: {e}')
+
+        # Pull latest agent_deliberation from sentiment tables
+        try:
+            conn = instance_db._get_conn()
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'sentiment_%'")
+            tables = [row[0] for row in cursor.fetchall()]
+
+            for tbl in tables[:10]:
+                try:
+                    cursor.execute(f'PRAGMA table_info({tbl})')
+                    cols = [c[1] for c in cursor.fetchall()]
+                    if 'agent_deliberation' not in cols:
+                        continue
+
+                    cursor.execute(f"""
+                        SELECT timestamp, timeframe, source_type, processing_time_ms,
+                               composite_score, consensus_score, signal_direction,
+                               meets_threshold, agent_deliberation
+                        FROM {tbl}
+                        WHERE agent_deliberation IS NOT NULL AND agent_deliberation != ''
+                        ORDER BY timestamp DESC LIMIT 3
+                    """)
+                    for row in cursor.fetchall():
+                        delib = None
+                        try:
+                            delib = _json.loads(row[8]) if row[8] else None
+                        except Exception:
+                            delib = {'raw': str(row[8])[:200]}
+
+                        entry = {
+                            'table': tbl, 'timestamp': row[0], 'timeframe': row[1],
+                            'source_type': row[2], 'processing_ms': row[3],
+                            'composite': row[4], 'consensus': row[5],
+                            'signal': row[6], 'met': bool(row[7]),
+                        }
+                        if delib and isinstance(delib, dict) and 'raw' not in delib:
+                            entry['mode'] = delib.get('mode', '?')
+                            entry['active_agents'] = delib.get('active_agents', [])
+                            entry['timing'] = delib.get('timing', {})
+                            entry['final_adjustments'] = delib.get('final_adjustments', {})
+                            entry['analyst_consensus'] = delib.get('analyst_consensus', {})
+
+                            bull = delib.get('bull_result', {})
+                            bear = delib.get('bear_result', {})
+                            risk = delib.get('risk_result', {})
+                            entry['bull'] = {
+                                'confidence': bull.get('confidence'),
+                                'strongest': bull.get('strongest_vector'),
+                                'flags': bull.get('flags', []),
+                            }
+                            entry['bear'] = {
+                                'confidence': bear.get('confidence'),
+                                'weakest': bear.get('weakest_vector'),
+                                'flags': bear.get('flags', []),
+                            }
+                            entry['risk'] = {
+                                'level': risk.get('overall_risk_level'),
+                                'veto': risk.get('veto', False),
+                                'multipliers': risk.get('multipliers', {}),
+                                'flags': risk.get('flags', []),
+                            }
+                            analysts = delib.get('analyst_reports', [])
+                            entry['analysts'] = [
+                                {'id': a.get('agent_id'), 'confidence': a.get('confidence'),
+                                 'flags': a.get('flags', []), 'adjustments': a.get('adjustments', {})}
+                                for a in analysts
+                            ]
+
+                        result['latest_deliberations'].append(entry)
+                except Exception as e:
+                    result['errors'].append(f'{tbl}: {e}')
+
+            conn.close()
+        except Exception as e:
+            result['errors'].append(f'deliberation scan: {e}')
+
+    return jsonify(result)
 
 
 # ============================================================================
@@ -1020,23 +1416,35 @@ def api_restore_instance(instance_id):
     return jsonify({"success": success})
 
 
+def normalize_symbol(raw_symbol):
+    """Strip .SIM/.sim suffix and normalize to base symbol.
+    XAUJ26.SIM → XAUJ26, btcf26.sim → BTCF26, XAUJ26 → XAUJ26"""
+    s = raw_symbol.strip().upper()
+    if s.endswith('.SIM'):
+        s = s[:-4]
+    return s
+
+
 @app.route('/api/instance/<instance_id>/initialize', methods=['POST'])
 def api_initialize_instance(instance_id):
     """
     Initialize database tables for a localStorage algorithm instance.
     Called when user selects an algorithm in the Instance Browser.
-    Creates the 4 linked tables: positions, sentiments, transitions, matrices
+    
+    Seed 20: Symbol Alignment — normalizes .SIM suffix and reuses existing
+    instances for the same symbol to prevent orphan duplicates.
     """
     if not instance_db:
         return jsonify({"success": False, "error": "Database not available"}), 500
     
     data = request.get_json() or {}
-    symbol = data.get('symbol', 'UNKNOWN').upper()
+    raw_symbol = data.get('symbol', 'UNKNOWN').upper()
+    symbol = normalize_symbol(raw_symbol)
     display_name = data.get('name', f'{symbol} Algorithm')
     
     try:
+        # 1. Check if THIS exact instance_id already exists
         existing = instance_db.get_instance(instance_id)
-        
         if existing:
             return jsonify({
                 "success": True,
@@ -1045,7 +1453,31 @@ def api_initialize_instance(instance_id):
                 "tables_created": []
             })
         
-        instance = instance_db.create_instance(
+        # 2. Check if an active instance for this symbol already exists (from a previous session)
+        #    Reuse it instead of creating an orphan duplicate.
+        #    Prefer instances with a linked profile (trader instances) over empty ones.
+        all_instances = instance_db.get_all_instances()
+        candidates = []
+        for inst in all_instances.get('active', []):
+            inst_symbol = normalize_symbol(inst.symbol)
+            if inst_symbol == symbol and inst.id != instance_id:
+                candidates.append(inst)
+        
+        if candidates:
+            # Prefer instance with a profile_id (= has been used with trader)
+            best = next((c for c in candidates if c.profile_id and c.profile_id.strip()), candidates[0])
+            print(f"[APEX] Reusing existing instance {best.id} for {symbol} (frontend asked for {instance_id})")
+            return jsonify({
+                "success": True,
+                "message": "Reusing existing instance for this symbol",
+                "instance_id": best.id,
+                "reused": True,
+                "tables_created": []
+            })
+        
+        # 3. No existing instance — create new one with normalized symbol
+        instance = instance_db.register_instance(
+            instance_id=instance_id,
             symbol=symbol,
             display_name=display_name,
             account_type='SIM'
@@ -1053,7 +1485,7 @@ def api_initialize_instance(instance_id):
         
         safe_id = instance_id.replace("-", "_").replace(".", "_").lower()
         
-        print(f"[APEX] Initialized instance tables for: {instance_id}")
+        print(f"[APEX] Initialized instance tables for: {instance_id} ({symbol})")
         
         return jsonify({
             "success": True,
@@ -1457,10 +1889,20 @@ def startup():
     
     print("\n[STARTUP] Starting collectors (15m + 1h)...")
     for symbol_id, config in SYMBOL_DATABASES.items():
+        ensure_symbol_database(config['db_path'])
         if os.path.exists(config['db_path']):
+            # Resolve MT5 symbol (same logic as backfill)
+            mt5_symbol = config['symbol']
+            if MT5_AVAILABLE and mt5.initialize():
+                resolved, ok = resolve_mt5_symbol(config['symbol'])
+                if ok:
+                    mt5_symbol = resolved
+                    if resolved != config['symbol']:
+                        print(f"  [{symbol_id}] Collector using resolved symbol: {resolved}")
+            
             # SEED 13: Explicitly pass 15m/1h timeframes
             collector = MT5AdvancedCollector(
-                symbol=config['symbol'], 
+                symbol=mt5_symbol, 
                 db_path=config['db_path'],
                 timeframes=['15m', '1h']  # New timeframe config
             )
@@ -1468,9 +1910,9 @@ def startup():
                 thread = threading.Thread(target=collector.run, daemon=True)
                 thread.start()
                 collector_threads[symbol_id] = {'collector': collector, 'thread': thread}
-                print(f"  ✓ {symbol_id} collector running (15m, 1h)")
+                print(f"  ✓ {symbol_id} collector running (15m, 1h) [{mt5_symbol}]")
             else:
-                print(f"  ✗ {symbol_id} MT5 failed")
+                print(f"  ✗ {symbol_id} MT5 failed for '{mt5_symbol}'")
 
     # Start sentiment scheduler if available
     if sentiment_scheduler:

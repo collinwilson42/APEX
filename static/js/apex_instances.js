@@ -350,6 +350,14 @@ const ApexInstanceBrowser = {
             });
             clearTimeout(timeoutId);
             const result = await response.json();
+            
+            // Seed 20: If backend reused an existing instance, redirect to it
+            if (result.success && result.reused && result.instance_id && result.instance_id !== instanceId) {
+                console.log(`[InstanceBrowser] Reusing existing instance ${result.instance_id} (was ${instanceId})`);
+                this.currentInstanceId = result.instance_id;
+                this.saveSelection(result.instance_id, name, symbol);
+            }
+            
             return result.success;
         } catch (e) { clearTimeout(timeoutId); return false; }
     },
@@ -692,6 +700,31 @@ const ApexInstanceBrowser = {
     // ═══════════════════════════════════════════════════════════════════════
     // UTILITIES
     // ═══════════════════════════════════════════════════════════════════════
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // TRADER ACTIVATION (Seed 18/19: Wire to TorraTraderBridge)
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    toggleTrading(instanceId) {
+        // Seed 20: Always use the resolved instance ID (may have been redirected by reuse)
+        const resolvedId = this.currentInstanceId || instanceId;
+        const saved = this.getSavedSelection();
+        const symbol = saved?.symbol || '';
+        
+        // Dispatch event for TorraTraderBridge
+        window.dispatchEvent(new CustomEvent('torra:activate', {
+            detail: { instanceId: resolvedId, symbol }
+        }));
+        
+        // Also start sentiment panel polling (reads from DB)
+        if (typeof ApexSentiment !== 'undefined') {
+            if (typeof TorraTraderBridge !== 'undefined' && TorraTraderBridge.isRunning(instanceId)) {
+                ApexSentiment.stopEngine();
+            } else {
+                ApexSentiment.startEngine(symbol, instanceId);
+            }
+        }
+    },
     
     formatSymbol(symbol) { if (!symbol) return '???'; return symbol.replace(/(\.sim)+$/gi, '') + '.SIM'; },
     formatTimestamp(ts) {

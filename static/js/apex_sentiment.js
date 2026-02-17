@@ -1,447 +1,494 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   APEX SENTIMENT PANEL - Overlay Component for Transition Matrix
+   APEX SENTIMENT PANEL v4.0 — Seed 22: Three-Panel Rotation
    
-   Displays AI sentiment analysis with 5 narrative categories:
-   1. Price Action - What is price doing?
-   2. Key Levels - What's above and below?
-   3. Momentum - Strengthening or weakening?
-   4. Volume Story - What's participation saying?
-   5. Structure - What pattern is forming?
+   Displays REAL AI sentiment scores + Agent Debate results from the instance
+   database.  When the TORRA trader is running, this module polls
+   /api/instance/<id>/sentiments/latest and rotates three views:
    
-   Activated by double-clicking ACTIVE button in control panel.
-   Shows for 30 seconds then transitions back to matrix view.
+     Phase 0: MATRIX    — Markov transition matrix (default view)
+     Phase 1: SCORES    — 5 scored vectors + composite banner
+     Phase 2: DEBATE    — Agent deliberation breakdown (Seed 22)
+   
+   Each phase shows for 5 seconds (15 s full cycle).
+
+   Score Layout: 3 top / 2 bottom grid
+   Signal Colors: Mint Green = BUY · Teal Blue = SELL
    ═══════════════════════════════════════════════════════════════════════════ */
 
-const ApexSentiment = {
+var ApexSentiment = {
     // State
     isRunning: false,
-    isMockMode: true,
     currentSymbol: 'XAUJ26',
-    currentReading: null,
-    displayTimeout: null,
-    
-    // Scheduling
-    scheduleInterval: null,
-    lastRun15m: null,
-    lastRun1h: null,
-    
-    // Config
-    config: {
-        displayDuration: 30000, // 30 seconds
-        tf15mOffsets: [1, 16, 31, 46], // Minutes after hour for 15m analysis
-        tf1hOffsets: [2], // Minutes after hour for 1h analysis (X:02)
-        replaySpeedMultiplier: 1
-    },
-    
+    currentInstanceId: null,
+    currentReadings: { '15m': null, '1h': null },
+
+    // Rotation
+    PHASE_NAMES: ['matrix', 'scores', 'debate'],
+    PHASE_DURATION: 5000,  // 5 seconds per phase
+    rotationPhase: { '15m': 0, '1h': 0 },
+    rotationTimers: { '15m': null, '1h': null },
+
+    // Polling
+    pollInterval: null,
+    pollRateMs: 5000,
+
     // DOM references
-    containers: {
-        '15m': null,
-        '1h': null
-    },
-    
+    containers: { '15m': null, '1h': null },
+
     // Category metadata
     categories: [
-        { key: 'price_action', label: 'Price Action', icon: '◆' },
-        { key: 'key_levels', label: 'Key Levels', icon: '═' },
-        { key: 'momentum', label: 'Momentum', icon: '↗' },
-        { key: 'volume_story', label: 'Volume', icon: '▊' },
-        { key: 'structure', label: 'Structure', icon: '◫' }
+        { key: 'price_action', dbKey: 'price_action_score', label: 'Price Action', icon: '◆', abbr: 'PA' },
+        { key: 'key_levels',   dbKey: 'key_levels_score',   label: 'Key Levels',   icon: '═', abbr: 'KL' },
+        { key: 'momentum',     dbKey: 'momentum_score',     label: 'Momentum',     icon: '↗', abbr: 'MOM' },
+        { key: 'ath',          dbKey: 'ath_score',           label: 'All Time High', icon: '▲', abbr: 'ATH' },
+        { key: 'structure',    dbKey: 'structure_score',     label: 'Structure',    icon: '◫', abbr: 'STR' }
     ],
-    
+
     // ═══════════════════════════════════════════════════════════════════════
     // INITIALIZATION
     // ═══════════════════════════════════════════════════════════════════════
-    
-    init() {
-        // Listen for replay speed changes
-        window.addEventListener('apex-replay-speed', (e) => {
-            this.config.replaySpeedMultiplier = e.detail.speed || 1;
+
+    init: function() {
+        var self = this;
+        window.addEventListener('torra:trader:started', function(e) {
+            var d = e.detail;
+            self.startEngine(d.symbol, d.instanceId);
         });
-        
-        console.log('[ApexSentiment] Initialized - waiting for activation');
+        window.addEventListener('torra:trader:stopped', function() {
+            self.stopEngine();
+        });
+        console.log('[ApexSentiment] v4.0 initialized — 3-panel rotation ready');
     },
-    
+
     // ═══════════════════════════════════════════════════════════════════════
     // ENGINE CONTROL
     // ═══════════════════════════════════════════════════════════════════════
-    
-    startEngine(symbol, mockMode = true) {
-        if (this.isRunning) {
-            console.log('[ApexSentiment] Already running');
+
+    startEngine: function(symbol, instanceId) {
+        this.isRunning = true;
+        this.currentSymbol = symbol || 'XAUJ26';
+        this.currentInstanceId = instanceId || this._resolveInstanceId();
+        if (!this.currentInstanceId) {
+            console.warn('[ApexSentiment] No instance ID — cannot poll DB');
             return;
         }
-        
-        this.isRunning = true;
-        this.isMockMode = mockMode;
-        this.currentSymbol = symbol || 'XAUJ26';
-        
-        console.log(`[ApexSentiment] Engine STARTED - Symbol: ${this.currentSymbol}, Mock: ${this.isMockMode}`);
-        
-        // Start the scheduler
-        this.startScheduler();
-        
-        // Run immediately for both timeframes to show something
-        this.runAnalysis('15m');
-        setTimeout(() => this.runAnalysis('1h'), 500);
+        console.log('[ApexSentiment] Engine STARTED — ' + this.currentInstanceId);
+        this.startPolling();
+        this.fetchLatest();
     },
-    
-    stopEngine() {
+
+    stopEngine: function() {
         if (!this.isRunning) return;
-        
         this.isRunning = false;
-        this.stopScheduler();
-        
-        // Hide any visible sentiment panels
-        this.hideSentiment('15m');
-        this.hideSentiment('1h');
-        
+        this.stopPolling();
+        this._stopRotation('15m');
+        this._stopRotation('1h');
+        this._hideOverlay('15m');
+        this._hideOverlay('1h');
+        this._updateHeaderTitle('15m', 'matrix', null);
+        this._updateHeaderTitle('1h', 'matrix', null);
         console.log('[ApexSentiment] Engine STOPPED');
     },
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // SCHEDULER
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    startScheduler() {
-        if (this.scheduleInterval) clearInterval(this.scheduleInterval);
-        
-        // Check every 5 seconds for schedule triggers
-        this.scheduleInterval = setInterval(() => {
-            this.checkSchedule();
-        }, 5000);
-        
-        console.log('[ApexSentiment] Scheduler started');
+
+    _resolveInstanceId: function() {
+        if (typeof ApexInstanceBrowser !== 'undefined' && ApexInstanceBrowser.currentInstanceId) {
+            return ApexInstanceBrowser.currentInstanceId;
+        }
+        try {
+            var saved = JSON.parse(localStorage.getItem('apex_selected_instance') || '{}');
+            return saved.instanceId || null;
+        } catch (e) { return null; }
     },
-    
-    stopScheduler() {
-        if (this.scheduleInterval) {
-            clearInterval(this.scheduleInterval);
-            this.scheduleInterval = null;
-        }
-        
-        if (this.displayTimeout) {
-            clearTimeout(this.displayTimeout);
-            this.displayTimeout = null;
-        }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DB POLLING
+    // ═══════════════════════════════════════════════════════════════════════
+
+    startPolling: function() {
+        this.stopPolling();
+        var self = this;
+        this.pollInterval = setInterval(function() { self.fetchLatest(); }, this.pollRateMs);
     },
-    
-    checkSchedule() {
-        if (!this.isRunning) return;
-        
-        const now = new Date();
-        const minute = now.getMinutes();
-        const second = now.getSeconds();
-        
-        // Only trigger at the start of the minute (first 10 seconds)
-        if (second > 10) return;
-        
-        // Check 15m schedule (X:01, X:16, X:31, X:46)
-        if (this.config.tf15mOffsets.includes(minute)) {
-            const key15m = `${now.getHours()}-${minute}`;
-            if (this.lastRun15m !== key15m) {
-                this.lastRun15m = key15m;
-                console.log(`[ApexSentiment] 15m trigger at ${now.toLocaleTimeString()}`);
-                this.runAnalysis('15m');
-            }
-        }
-        
-        // Check 1h schedule (X:02 - 2 minutes after hour)
-        if (this.config.tf1hOffsets.includes(minute)) {
-            const key1h = `${now.getHours()}-${minute}`;
-            if (this.lastRun1h !== key1h) {
-                this.lastRun1h = key1h;
-                console.log(`[ApexSentiment] 1h trigger at ${now.toLocaleTimeString()}`);
-                this.runAnalysis('1h');
-            }
+
+    stopPolling: function() {
+        if (this.pollInterval) {
+            clearInterval(this.pollInterval);
+            this.pollInterval = null;
         }
     },
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // ANALYSIS
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    async runAnalysis(timeframe) {
-        if (!this.isRunning) return;
-        
-        let reading;
-        
-        if (this.isMockMode) {
-            reading = this.generateMockReading(timeframe);
-        } else {
-            // Call backend API
-            try {
-                const response = await fetch('/api/sentiment/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        symbol: this.currentSymbol, 
-                        timeframe: timeframe 
-                    })
+
+    fetchLatest: function() {
+        if (!this.currentInstanceId) return;
+        var self = this;
+        fetch('/api/instance/' + this.currentInstanceId + '/sentiments/latest')
+            .then(function(r) { return r.json(); })
+            .then(function(result) {
+                if (!result.success) return;
+                ['15m', '1h'].forEach(function(tf) {
+                    if (result[tf]) {
+                        var prev = self.currentReadings[tf];
+                        var nr = result[tf];
+                        if (!prev || prev.id !== nr.id) {
+                            self.currentReadings[tf] = nr;
+                            self._onNewReading(tf, nr);
+                        }
+                    }
                 });
-                
-                const result = await response.json();
-                if (result.success && result.data) {
-                    reading = result.data;
-                } else {
-                    console.warn('[ApexSentiment] API returned no data, using mock');
-                    reading = this.generateMockReading(timeframe);
-                }
-            } catch (e) {
-                console.warn('[ApexSentiment] API call failed, using mock:', e);
-                reading = this.generateMockReading(timeframe);
-            }
+            })
+            .catch(function() {});
+    },
+
+    _onNewReading: function(tf, reading) {
+        // Build/refresh both overlay panels, then start rotation if not running
+        this._ensureOverlayDOM(tf);
+        this._renderScoresPanel(tf, reading);
+        this._renderDebatePanel(tf, reading);
+        if (!this.rotationTimers[tf]) {
+            this._startRotation(tf);
         }
-        
-        // Display the sentiment
-        this.showSentiment(timeframe, reading);
     },
-    
-    generateMockReading(timeframe) {
-        const now = new Date();
-        const price = (2780 + Math.random() * 20).toFixed(0);
-        const ema21 = (parseFloat(price) - 10 - Math.random() * 5).toFixed(0);
-        const ema50 = (parseFloat(price) - 20 - Math.random() * 10).toFixed(0);
-        const bbUpper = (parseFloat(price) + 8 + Math.random() * 5).toFixed(0);
-        const bbLower = (parseFloat(price) - 15 - Math.random() * 5).toFixed(0);
-        
-        // Randomly choose a market scenario
-        const scenarios = [
-            {
-                price_action: `Price testing upper resistance around ${price}, showing hesitation with smaller bodied candles. Recent push was impulsive but now stalling at this level with potential for rejection.`,
-                key_levels: `EMA 21 at ${ema21} providing dynamic support. Upper Bollinger band at ${bbUpper}. Key horizontal resistance at ${price}-${parseInt(price)+10} zone formed by previous swing highs.`,
-                momentum: `Candles getting progressively smaller on the push up - classic momentum fade pattern. Watching for either volume confirmation or reversal signal.`,
-                volume_story: `Volume declining on last 3-4 bars despite price holding highs. This divergence often precedes a pullback to test support.`,
-                structure: `Potential distribution forming at resistance. If ${ema21} breaks, next support at ${bbLower}. Compression building for directional move.`,
-                summary: `Bullish structure but momentum fading at resistance. Watch for volume spike above ${parseInt(price)+10} or rejection back to ${ema21}.`
-            },
-            {
-                price_action: `Strong bullish candles breaking above ${ema21} with follow-through. Price accelerating away from the moving averages with clean higher highs and higher lows.`,
-                key_levels: `Just cleared resistance at ${ema21}, now acting as support. Next resistance at ${bbUpper}. EMA 50 at ${ema50} well below providing backstop.`,
-                momentum: `Candles expanding in size with each push higher - acceleration phase. Momentum indicators confirming with no divergences visible.`,
-                volume_story: `Volume expanding on up moves, contracting on pullbacks. Classic accumulation pattern with strong participation on breakouts.`,
-                structure: `Trending structure established. Higher timeframe bias bullish. Pullbacks to ${ema21} are buying opportunities until structure breaks.`,
-                summary: `Strong uptrend in impulse phase. Buy dips to ${ema21}, target ${bbUpper}. Only concern is potential exhaustion if volume drops.`
-            },
-            {
-                price_action: `Choppy price action with overlapping candles. Neither bulls nor bears in control. Price oscillating between ${bbLower} and ${ema21} without conviction.`,
-                key_levels: `Range bound between ${bbLower} support and ${ema21} resistance. Multiple tests of both levels with no clean break. EMA 50 flat at ${ema50}.`,
-                momentum: `Momentum indicators flatlining around neutral. No clear directional bias. Candles mixed with no consistent pattern.`,
-                volume_story: `Volume below average and declining. Market waiting for catalyst. Neither buyers nor sellers stepping up with size.`,
-                structure: `Consolidation/range structure. Expect expansion soon but direction unclear. Watch for volume spike to signal breakout direction.`,
-                summary: `Range-bound chop - avoid trading middle. Wait for clean break of ${bbLower} or ${ema21} with volume confirmation before taking position.`
-            },
-            {
-                price_action: `Bearish rejection candle forming at ${ema21} resistance. Previous attempt failed at same level. Price showing weakness with lower highs.`,
-                key_levels: `Rejected at EMA 21 (${ema21}) for second time. Support at ${bbLower}, break targets ${parseInt(bbLower)-15}. Resistance overhead at ${bbUpper} increasingly distant.`,
-                momentum: `Momentum rolling over from overbought. Each rally attempt weaker than prior. Distribution pattern forming on multiple timeframes.`,
-                volume_story: `Volume spikes on down moves, dries up on rallies. Clear seller aggression pattern. Smart money appears to be distributing.`,
-                structure: `Lower high structure forming. If ${bbLower} breaks, measured move targets ${parseInt(bbLower)-20}. Rallies are selling opportunities.`,
-                summary: `Bearish setup forming. Short rallies to ${ema21} with stops above ${bbUpper}. Target ${bbLower} break for continuation.`
-            }
-        ];
-        
-        const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
-        
-        return {
-            id: Date.now(),
-            timestamp: now.toISOString(),
-            symbol: this.currentSymbol,
-            timeframe: timeframe,
-            price_action: scenario.price_action,
-            key_levels: scenario.key_levels,
-            momentum: scenario.momentum,
-            volume_story: scenario.volume_story,
-            structure: scenario.structure,
-            summary: scenario.summary,
-            processing_time_ms: Math.floor(100 + Math.random() * 400)
-        };
-    },
-    
+
     // ═══════════════════════════════════════════════════════════════════════
-    // DISPLAY LOGIC
+    // THREE-PHASE ROTATION
     // ═══════════════════════════════════════════════════════════════════════
-    
-    showSentiment(timeframe, reading) {
-        const container = document.getElementById(`matrix-${timeframe}`);
-        if (!container) {
-            console.warn(`[ApexSentiment] Container matrix-${timeframe} not found`);
-            return;
-        }
-        
-        // Store reference
-        this.containers[timeframe] = container;
-        this.currentReading = reading;
-        
-        // Create sentiment overlay
-        const overlay = this.createSentimentOverlay(reading, timeframe);
-        
-        // Find or create overlay container
-        let overlayContainer = container.querySelector('.sentiment-overlay');
-        if (!overlayContainer) {
-            overlayContainer = document.createElement('div');
-            overlayContainer.className = 'sentiment-overlay';
-            container.appendChild(overlayContainer);
-        }
-        
-        // Animate in
-        overlayContainer.innerHTML = '';
-        overlayContainer.appendChild(overlay);
-        
-        // Force reflow then add visible class for animation
-        overlayContainer.offsetHeight;
-        overlayContainer.classList.add('sentiment-overlay--visible');
-        
-        // Update header title
-        this.updateHeaderTitle(timeframe, true, reading);
-        
-        // Set timeout to hide
-        const duration = this.config.displayDuration / this.config.replaySpeedMultiplier;
-        
-        // Clear any existing timeout for this timeframe
-        if (this[`displayTimeout_${timeframe}`]) {
-            clearTimeout(this[`displayTimeout_${timeframe}`]);
-        }
-        
-        this[`displayTimeout_${timeframe}`] = setTimeout(() => {
-            this.hideSentiment(timeframe);
-        }, duration);
-        
-        console.log(`[ApexSentiment] Showing ${timeframe} sentiment for ${duration/1000}s`);
+
+    _startRotation: function(tf) {
+        this._stopRotation(tf);
+        var self = this;
+        // Start immediately at phase 0 (matrix)
+        this.rotationPhase[tf] = 0;
+        this._applyPhase(tf);
+        this.rotationTimers[tf] = setInterval(function() {
+            self.rotationPhase[tf] = (self.rotationPhase[tf] + 1) % 3;
+            self._applyPhase(tf);
+        }, this.PHASE_DURATION);
     },
-    
-    hideSentiment(timeframe) {
-        const container = this.containers[timeframe];
+
+    _stopRotation: function(tf) {
+        if (this.rotationTimers[tf]) {
+            clearInterval(this.rotationTimers[tf]);
+            this.rotationTimers[tf] = null;
+        }
+    },
+
+    _applyPhase: function(tf) {
+        var phase = this.rotationPhase[tf];
+        var phaseName = this.PHASE_NAMES[phase];
+        var container = document.getElementById('matrix-' + tf);
         if (!container) return;
-        
-        const overlayContainer = container.querySelector('.sentiment-overlay');
-        if (overlayContainer) {
-            overlayContainer.classList.remove('sentiment-overlay--visible');
-            
-            // Remove after animation
-            setTimeout(() => {
-                if (overlayContainer.parentNode) {
-                    overlayContainer.remove();
-                }
-            }, 300);
+
+        var scoresEl = container.querySelector('.sentiment-overlay--scores');
+        var debateEl = container.querySelector('.sentiment-overlay--debate');
+        var reading = this.currentReadings[tf];
+
+        if (phaseName === 'matrix') {
+            // Show matrix, hide overlays
+            if (scoresEl) scoresEl.classList.remove('sentiment-overlay--visible');
+            if (debateEl) debateEl.classList.remove('sentiment-overlay--visible');
+        } else if (phaseName === 'scores') {
+            if (scoresEl) scoresEl.classList.add('sentiment-overlay--visible');
+            if (debateEl) debateEl.classList.remove('sentiment-overlay--visible');
+        } else if (phaseName === 'debate') {
+            if (scoresEl) scoresEl.classList.remove('sentiment-overlay--visible');
+            if (debateEl) debateEl.classList.add('sentiment-overlay--visible');
         }
-        
-        // Restore header title
-        this.updateHeaderTitle(timeframe, false);
+
+        this._updateHeaderTitle(tf, phaseName, reading);
     },
-    
-    updateHeaderTitle(timeframe, showSentiment, reading = null) {
-        const cellContainer = document.getElementById(`matrix-${timeframe}-container`);
-        if (!cellContainer) return;
-        
-        const titleEl = cellContainer.querySelector('.trading-cell__title');
+
+    _hideOverlay: function(tf) {
+        var container = document.getElementById('matrix-' + tf);
+        if (!container) return;
+        var els = container.querySelectorAll('.sentiment-overlay--scores, .sentiment-overlay--debate');
+        for (var i = 0; i < els.length; i++) {
+            els[i].classList.remove('sentiment-overlay--visible');
+        }
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DOM SCAFFOLDING
+    // ═══════════════════════════════════════════════════════════════════════
+
+    _ensureOverlayDOM: function(tf) {
+        var container = document.getElementById('matrix-' + tf);
+        if (!container) return;
+        this.containers[tf] = container;
+
+        if (!container.querySelector('.sentiment-overlay--scores')) {
+            var el = document.createElement('div');
+            el.className = 'sentiment-overlay sentiment-overlay--scores';
+            container.appendChild(el);
+        }
+        if (!container.querySelector('.sentiment-overlay--debate')) {
+            var el2 = document.createElement('div');
+            el2.className = 'sentiment-overlay sentiment-overlay--debate';
+            container.appendChild(el2);
+        }
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // HEADER TITLE UPDATES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    _updateHeaderTitle: function(tf, phaseName, reading) {
+        var cell = document.getElementById('matrix-' + tf + '-container');
+        if (!cell) return;
+        var titleEl = cell.querySelector('.trading-cell__title');
         if (!titleEl) return;
-        
-        if (showSentiment && reading) {
-            titleEl.innerHTML = `<span class="sentiment-title-label">SENTIMENT</span> ${timeframe.toUpperCase()}`;
-            titleEl.classList.add('trading-cell__title--sentiment');
-        } else {
+
+        if (phaseName === 'matrix' || !reading) {
             titleEl.textContent = 'Transition Matrix';
             titleEl.classList.remove('trading-cell__title--sentiment');
+            return;
         }
-    },
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // COMPONENT RENDERING
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    createSentimentOverlay(reading, timeframe) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'sentiment-panel';
-        
-        // Summary at top
-        if (reading.summary) {
-            const summarySection = this.createSummarySection(reading);
-            wrapper.appendChild(summarySection);
+
+        var signal = reading.signal_direction || 'HOLD';
+        var signalClass = signal === 'BUY' ? 'signal--buy' : signal === 'SELL' ? 'signal--sell' : 'signal--hold';
+
+        if (phaseName === 'scores') {
+            titleEl.innerHTML = '<span class="sentiment-title-label">SCORES</span> ' +
+                tf.toUpperCase() + ' <span class="sentiment-signal ' + signalClass + '">' + signal + '</span>';
+        } else if (phaseName === 'debate') {
+            titleEl.innerHTML = '<span class="sentiment-title-label sentiment-title-label--debate">DEBATE</span> ' +
+                tf.toUpperCase() + ' <span class="sentiment-signal ' + signalClass + '">' + signal + '</span>';
         }
-        
-        // Five narrative categories
-        const categoriesSection = this.createCategoriesSection(reading);
-        wrapper.appendChild(categoriesSection);
-        
-        // Timestamp footer
-        const footer = this.createFooter(reading);
-        wrapper.appendChild(footer);
-        
-        return wrapper;
+        titleEl.classList.add('trading-cell__title--sentiment');
     },
-    
-    createSummarySection(reading) {
-        const section = document.createElement('div');
-        section.className = 'sentiment-summary';
-        
-        section.innerHTML = `
-            <div class="sentiment-summary__text">${reading.summary || 'No summary available'}</div>
-        `;
-        
-        return section;
-    },
-    
-    createCategoriesSection(reading) {
-        const section = document.createElement('div');
-        section.className = 'sentiment-categories';
-        
-        this.categories.forEach(cat => {
-            const text = reading[cat.key] || '';
-            if (text) {
-                const card = this.createCategoryCard(cat, text);
-                section.appendChild(card);
-            }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SCORES PANEL (Phase 1) — 3-top / 2-bottom layout
+    // ═══════════════════════════════════════════════════════════════════════
+
+    _renderScoresPanel: function(tf, reading) {
+        var container = document.getElementById('matrix-' + tf);
+        if (!container) return;
+        var el = container.querySelector('.sentiment-overlay--scores');
+        if (!el) return;
+
+        var composite = reading.composite_score || 0;
+        var consensus = reading.consensus_score != null ? reading.consensus_score : composite;
+        var signal = reading.signal_direction || 'HOLD';
+        var meets = reading.meets_threshold;
+        var biasLabel = reading.matrix_bias_label || 'Neutral';
+
+        var signalClass = signal === 'BUY' ? 'signal--buy' : signal === 'SELL' ? 'signal--sell' : 'signal--hold';
+        var compositeClass = composite > 0.2 ? 'comp--bull' : composite < -0.2 ? 'comp--bear' : 'comp--neutral';
+        var self = this;
+
+        // Banner
+        var html = '<div class="sentiment-panel">' +
+            '<div class="sentiment-banner ' + compositeClass + '">' +
+                '<div class="sentiment-banner__scores">' +
+                    '<div class="sentiment-banner__composite">' +
+                        '<span class="sentiment-banner__label">COMPOSITE</span>' +
+                        '<span class="sentiment-banner__value">' + (composite >= 0 ? '+' : '') + composite.toFixed(3) + '</span>' +
+                    '</div>' +
+                    '<div class="sentiment-banner__consensus">' +
+                        '<span class="sentiment-banner__label">CONSENSUS</span>' +
+                        '<span class="sentiment-banner__value">' + (consensus >= 0 ? '+' : '') + consensus.toFixed(3) + '</span>' +
+                    '</div>' +
+                    '<div class="sentiment-banner__signal ' + signalClass + '">' +
+                        '<span class="sentiment-banner__label">SIGNAL</span>' +
+                        '<span class="sentiment-banner__value">' + signal + ' ' + (meets ? '✓' : '·') + '</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="sentiment-banner__bias">' + biasLabel + '</div>' +
+            '</div>';
+
+        // Score Grid — 3 top + 2 bottom
+        html += '<div class="sentiment-score-grid">';
+        this.categories.forEach(function(cat) {
+            var score = parseFloat(reading[cat.dbKey] || 0);
+            var scoreClass = score > 0.2 ? 'score--bull' : score < -0.2 ? 'score--bear' : 'score--neutral';
+            var weight = 0;
+            try {
+                var ws = JSON.parse(reading.weights_snapshot || '{}');
+                weight = (ws.sentiment_weights && ws.sentiment_weights[cat.key]) || 0;
+            } catch (e) {}
+            var contribution = score * weight;
+
+            html += '<div class="sentiment-score-card ' + scoreClass + '">' +
+                '<div class="score-card__header">' +
+                    '<span class="score-card__icon">' + cat.icon + '</span>' +
+                    '<span class="score-card__label">' + cat.abbr + '</span>' +
+                    '<span class="score-card__weight">' + (weight * 100).toFixed(0) + '%</span>' +
+                '</div>' +
+                '<div class="score-card__value">' + (score >= 0 ? '+' : '') + score.toFixed(2) + '</div>' +
+                '<div class="score-card__contrib">' + (contribution >= 0 ? '+' : '') + contribution.toFixed(3) + '</div>' +
+            '</div>';
         });
-        
-        return section;
+        html += '</div>';
+
+        // Footer
+        var time = reading.timestamp ? new Date(reading.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '--:--';
+        var procTime = reading.processing_time_ms ? reading.processing_time_ms + 'ms' : '';
+        var sourceType = reading.source_type || '';
+        var sourceLabel = (sourceType && sourceType !== 'API') ? '<span class="sentiment-footer__mock">' + sourceType + '</span>' : '';
+        var model = reading.source_model ? reading.source_model.split('-').pop() : '';
+
+        html += '<div class="sentiment-footer">' +
+            '<span class="sentiment-footer__time">' + tf.toUpperCase() + ' · ' + time + '</span>' +
+            sourceLabel +
+            (model ? '<span class="sentiment-footer__model">' + model + '</span>' : '') +
+            (procTime ? '<span class="sentiment-footer__proc">' + procTime + '</span>' : '') +
+        '</div>';
+
+        html += '</div>';
+        el.innerHTML = html;
     },
-    
-    createCategoryCard(category, text) {
-        const card = document.createElement('div');
-        card.className = 'sentiment-category';
-        
-        card.innerHTML = `
-            <div class="sentiment-category__header">
-                <span class="sentiment-category__icon">${category.icon}</span>
-                <span class="sentiment-category__label">${category.label}</span>
-            </div>
-            <div class="sentiment-category__text">${text}</div>
-        `;
-        
-        return card;
-    },
-    
-    createFooter(reading) {
-        const footer = document.createElement('div');
-        footer.className = 'sentiment-footer';
-        
-        const time = reading.timestamp ? new Date(reading.timestamp).toLocaleTimeString() : '--:--';
-        const procTime = reading.processing_time_ms ? `${reading.processing_time_ms}ms` : '';
-        const modeLabel = this.isMockMode ? '<span class="sentiment-footer__mock">MOCK</span>' : '';
-        
-        footer.innerHTML = `
-            <span class="sentiment-footer__time">${time}</span>
-            ${modeLabel}
-            ${procTime ? `<span class="sentiment-footer__proc">${procTime}</span>` : ''}
-        `;
-        
-        return footer;
-    },
-    
+
     // ═══════════════════════════════════════════════════════════════════════
-    // MANUAL TRIGGER (for testing)
+    // AGENT DEBATE PANEL (Phase 2) — Seed 22
     // ═══════════════════════════════════════════════════════════════════════
-    
-    async triggerAnalysis(symbol, timeframe) {
+
+    _renderDebatePanel: function(tf, reading) {
+        var container = document.getElementById('matrix-' + tf);
+        if (!container) return;
+        var el = container.querySelector('.sentiment-overlay--debate');
+        if (!el) return;
+
+        // Parse deliberation JSON
+        var delib = null;
+        try {
+            if (reading.agent_deliberation) {
+                delib = typeof reading.agent_deliberation === 'string'
+                    ? JSON.parse(reading.agent_deliberation)
+                    : reading.agent_deliberation;
+            }
+        } catch (e) { delib = null; }
+
+        if (!delib) {
+            el.innerHTML = '<div class="sentiment-panel">' +
+                '<div class="debate-empty">' +
+                    '<div class="debate-empty__icon">⚔</div>' +
+                    '<div class="debate-empty__text">No agent debate data</div>' +
+                    '<div class="debate-empty__sub">Enable agents in Profile Manager</div>' +
+                '</div>' +
+            '</div>';
+            return;
+        }
+
+        var mode = delib.mode || '?';
+        var agents = delib.active_agents || [];
+        var timing = delib.timing || {};
+
+        var html = '<div class="sentiment-panel">';
+
+        // ── Header badge row ──
+        html += '<div class="debate-header">';
+        html += '<span class="debate-badge debate-badge--mode">' + mode.toUpperCase() + '</span>';
+        html += '<span class="debate-badge debate-badge--agents">' + agents.length + ' agents</span>';
+        if (timing.total_seconds) {
+            html += '<span class="debate-badge debate-badge--time">' + timing.total_seconds.toFixed(1) + 's</span>';
+        }
+        html += '</div>';
+
+        // ── Bull vs Bear ──
+        var bull = delib.bull_result || {};
+        var bear = delib.bear_result || {};
+
+        html += '<div class="debate-versus">';
+
+        // Bull side
+        html += '<div class="debate-side debate-side--bull">';
+        html += '<div class="debate-side__title">▲ BULL</div>';
+        html += '<div class="debate-side__conf">' + (bull.confidence || '—') + '</div>';
+        if (bull.strongest_vector) {
+            html += '<div class="debate-side__detail">strongest: ' + bull.strongest_vector + '</div>';
+        }
+        var bullFlags = bull.flags || [];
+        if (bullFlags.length > 0) {
+            html += '<div class="debate-side__flags">' + bullFlags.slice(0, 2).join(', ') + '</div>';
+        }
+        html += '</div>';
+
+        // Bear side
+        html += '<div class="debate-side debate-side--bear">';
+        html += '<div class="debate-side__title">▼ BEAR</div>';
+        html += '<div class="debate-side__conf">' + (bear.confidence || '—') + '</div>';
+        if (bear.weakest_vector) {
+            html += '<div class="debate-side__detail">weakest: ' + bear.weakest_vector + '</div>';
+        }
+        var bearFlags = bear.flags || [];
+        if (bearFlags.length > 0) {
+            html += '<div class="debate-side__flags">' + bearFlags.slice(0, 2).join(', ') + '</div>';
+        }
+        html += '</div>';
+
+        html += '</div>'; // end versus
+
+        // ── Risk Gate ──
+        var risk = delib.risk_result || {};
+        if (risk.overall_risk_level) {
+            var rl = risk.overall_risk_level;
+            var riskCls = rl === 'low' ? 'risk--low' : rl === 'high' ? 'risk--high' : 'risk--med';
+            html += '<div class="debate-risk ' + riskCls + '">';
+            html += '<span class="debate-risk__label">⊚ RISK GATE</span>';
+            html += '<span class="debate-risk__level">' + rl.toUpperCase() + '</span>';
+            if (risk.veto) {
+                html += '<span class="debate-risk__veto">VETO</span>';
+            }
+            // Multipliers
+            var mults = risk.multipliers || {};
+            var multKeys = Object.keys(mults);
+            if (multKeys.length > 0) {
+                html += '<div class="debate-risk__mults">';
+                multKeys.forEach(function(k) {
+                    var v = mults[k];
+                    var mc = v >= 0.8 ? 'mult--ok' : v >= 0.5 ? 'mult--warn' : 'mult--bad';
+                    html += '<span class="debate-mult ' + mc + '">' +
+                        k.replace('_score', '').substring(0, 4) + ' ×' +
+                        (typeof v === 'number' ? v.toFixed(2) : v) + '</span>';
+                });
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+
+        // ── Final Adjustments ──
+        var adj = delib.final_adjustments || {};
+        var adjKeys = Object.keys(adj);
+        if (adjKeys.length > 0) {
+            html += '<div class="debate-adjustments">';
+            html += '<div class="debate-adjustments__title">ADJUSTMENTS</div>';
+            html += '<div class="debate-adjustments__row">';
+            adjKeys.forEach(function(k) {
+                var v = adj[k];
+                var cls = v > 0.03 ? 'adj--pos' : v < -0.03 ? 'adj--neg' : 'adj--flat';
+                html += '<span class="debate-adj ' + cls + '">' +
+                    k.replace('_score', '').substring(0, 3).toUpperCase() + ' ' +
+                    (v > 0 ? '+' : '') + (typeof v === 'number' ? v.toFixed(3) : v) + '</span>';
+            });
+            html += '</div></div>';
+        }
+
+        // ── Timing breakdown ──
+        if (timing.phase1_analysts || timing.phase2_debate || timing.phase3_risk) {
+            html += '<div class="debate-timing">';
+            if (timing.phase1_analysts) html += '<span>analysts ' + timing.phase1_analysts.toFixed(1) + 's</span>';
+            if (timing.phase2_debate) html += '<span>debate ' + timing.phase2_debate.toFixed(1) + 's</span>';
+            if (timing.phase3_risk) html += '<span>risk ' + timing.phase3_risk.toFixed(1) + 's</span>';
+            html += '</div>';
+        }
+
+        html += '</div>';
+        el.innerHTML = html;
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MANUAL TRIGGER (for testing from console)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    triggerManual: function(instanceId, symbol) {
+        this.currentInstanceId = instanceId || this._resolveInstanceId();
         this.currentSymbol = symbol || this.currentSymbol;
-        await this.runAnalysis(timeframe);
+        this.isRunning = true;
+        this.fetchLatest();
     }
 };
 
-// Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
     ApexSentiment.init();
 });
 
-// Export
 window.ApexSentiment = ApexSentiment;

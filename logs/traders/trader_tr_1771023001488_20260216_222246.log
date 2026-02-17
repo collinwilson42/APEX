@@ -1,0 +1,53 @@
+  ✓ MT5 connected for live price data
+[MT5Sync] Connected to MT5
+[MT5Sync] Sync loop started for tr_1771023001488[MT5Sync] Started sync for tr_1771023001488 (XAUUSD.sim)
+
+  ✓ Position sync started (XAUUSD.sim)[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status
+
+
+============================================================
+  TORRA TRADER v3.1 — DUAL SCREENSHOT + MULTI-AGENT
+  Instance:  tr_1771023001488
+  Symbol:    XAUJ26.SIM
+  Profile:   XAUJ26.SIM Trading Profile (6bd1dfe7-824)
+  Model:     claude-sonnet-4-20250514
+  Threshold: +/-0.3
+  Weights:   PA:0.30 KL:0.15 MOM:0.25 ATH:0.10 STR:0.20
+  TF Blend:  15m:0.60 | 1h:0.40
+  Lot Size:  0.1
+  Signal:    C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+  Capture:   mss (per-timeframe regions)
+    15m:     left=1040, top=200, 1840x520
+    1h:      left=1040, top=710, 1840x500
+  Agents:    BUDGET mode (4 agents)
+             technical, bull_researcher, bear_researcher, risk_gate
+============================================================
+
+  Schedule:  15m@(1, 16, 31, 46) | 1h@(2,)
+  [run-now] Immediate first tick...
+
+---- 15M TICK @ 22:23 ────────────────────────────────────────
+  Config: BUY>=+0.300  SELL<=-0.300  lots=0.1  cd=300s
+  [capture] 15m chart via mss region (1040,200 1840x520)
+  [capture] Chart captured (198KB) via mss region
+[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status
+[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status
+[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status
+[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status
+2026-02-16 22:23:24,976 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  [score] Base -> PA:-0.60  KL:-0.40  MOM:-0.50  STR:-0.70
+  [agents] Debate (budget mode)...
+[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status
+[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status
+[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status
+2026-02-16 22:23:31,346 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 22:23:31,381 [INFO]   🔹 technical: conf=medium flags=['lower_highs_lower_lows_confirmed', 'wick_rejection_at_resistance', 'consolidation_within_downtrend', 'no_reversal_pattern_visible', 'support_level_4950_tested_multiple_times']
+[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status
+[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status
+2026-02-16 22:23:36,033 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 22:23:36,037 [INFO]   🐂 Bull: conf=low strongest=key_levels
+[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status
+[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status
+2026-02-16 22:23:40,410 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-16 22:23:40,428 [INFO]   🐻 Bear: conf=medium weakest=key_levels
+[MT5Sync] Sync error for tr_1771023001488: no such column: sync_status

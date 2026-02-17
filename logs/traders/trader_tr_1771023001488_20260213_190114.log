@@ -1,0 +1,70 @@
+
+════════════════════════════════════════════════════════════
+  🔷 TORRA TRADER v2.0 — CONFIG-FIRST EXECUTOR
+  Instance:  tr_1771023001488
+  Symbol:    XAUJ26.SIM
+  Profile:   XAUJ26.SIM Trading Profile (6bd1dfe7-824)
+  Model:     claude-sonnet-4-20250514
+  Threshold: BUY≥+0.950  SELL≤-0.950
+  Weights:   PA:0.12 KL:0.16 MOM:0.28 ATH:0.10 STR:0.34
+  TF Blend:  15m:0.40 | 1h:0.60
+  Risk:      lots=1 | cooldown=300s | max=3/hr
+  Signal:    C:\Users\colli\AppData\Roaming\MetaQuotes\Terminal\Common\Files\webhook_signals.txt
+  Sig Dir:   ✓ exists
+════════════════════════════════════════════════════════════
+
+  Schedule:  15m@(1, 16, 31, 46) | 1h@(2,)
+  🚀 Immediate first tick (--run-now)...
+
+──── 15M TICK @ 19:01 ────────────────────────────────────────
+  📸 Screenshot captured (272KB)
+2026-02-13 19:01:26,527 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  🤖 Claude API → 4 visual vectors (5173ms)
+     PA:-0.60  KL:-0.50  MOM:-0.70  STR:-0.60
+  📊 ATH score: +0.00 (50th pctl, UNKNOWN)
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=-0.552 consensus=-0.552 | HOLD ·
+  💾 DB verdict: composite=-0.552 | partner=N/A | consensus=-0.552
+  ⚪ HOLD | threshold: NOT MET ·
+  ⏸️  No signal — holding
+
+
+──── 15M TICK @ 19:01 ────────────────────────────────────────
+  📸 Screenshot captured (275KB)
+2026-02-13 19:01:35,806 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  🤖 Claude API → 4 visual vectors (8978ms)
+     PA:-0.60  KL:-0.40  MOM:-0.50  STR:-0.70
+  📊 ATH score: +0.00 (50th pctl, UNKNOWN)
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=-0.514 consensus=-0.514 | HOLD ·
+  💾 DB verdict: composite=-0.514 | partner=N/A | consensus=-0.514
+  ⚪ HOLD | threshold: NOT MET ·
+  ⏸️  No signal — holding
+
+──── 1H TICK @ 19:02 ────────────────────────────────────────
+  📸 Screenshot captured (278KB)
+2026-02-13 19:02:11,692 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  🤖 Claude API → 4 visual vectors (5584ms)
+     PA:-0.60  KL:-0.40  MOM:-0.50  STR:-0.40
+  📊 ATH score: +0.00 (50th pctl, UNKNOWN)
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 1h | composite=-0.412 consensus=-0.453 | HOLD ·
+  💾 DB verdict: composite=-0.412 | partner=-0.514 | consensus=-0.453
+  ⚪ HOLD | threshold: NOT MET ·
+  ⏸️  No signal — holding
+  💓 19:05 — waiting (next 15m tick at :16)
+  💓 19:10 — waiting (next 15m tick at :16)
+  💓 19:15 — waiting (next 15m tick at :16)
+
+──── 15M TICK @ 19:16 ────────────────────────────────────────
+  📸 Screenshot captured (252KB)
+2026-02-13 19:16:09,581 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+  🤖 Claude API → 4 visual vectors (5906ms)
+     PA:-0.20  KL:-0.10  MOM:-0.30  STR:+0.00
+  📊 ATH score: +0.00 (50th pctl, UNKNOWN)
+[SentimentDB] Markov transition check skipped: table state_transitions_tr_1771023001488 has no column named profile_id
+[SentimentDB] 15m | composite=-0.124 consensus=-0.297 | HOLD ·
+  💾 DB verdict: composite=-0.124 | partner=-0.412 | consensus=-0.297
+  ⚪ HOLD | threshold: NOT MET ·
+  ⏸️  No signal — holding
+  💓 19:20 — waiting (next 15m tick at :31)

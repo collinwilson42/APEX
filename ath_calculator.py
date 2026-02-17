@@ -219,13 +219,20 @@ def calculate_ath_score(symbol: str, lookback: int = 500) -> dict:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         SYMBOL_DATABASES = {}
     
-    # Resolve intelligence DB path
+    # Resolve intelligence DB path — try exact symbol, then normalized
     sym_config = SYMBOL_DATABASES.get(symbol, {})
     db_path = sym_config.get('db_path')
     
     if not db_path:
-        # Fallback: construct from symbol name
-        db_path = os.path.join(BASE_DIR, f"{symbol}_intelligence.db")
+        # Try with normalized symbol (strip .SIM)
+        norm = symbol.upper().replace('.SIM', '')
+        sym_config = SYMBOL_DATABASES.get(norm, {})
+        db_path = sym_config.get('db_path')
+    
+    if not db_path:
+        # Final fallback: construct from symbol name
+        norm = symbol.upper().replace('.SIM', '')
+        db_path = os.path.join(BASE_DIR, f"{norm}_intelligence.db")
     
     if not os.path.exists(db_path):
         return {
@@ -236,9 +243,9 @@ def calculate_ath_score(symbol: str, lookback: int = 500) -> dict:
             "note": f"Intelligence DB not found: {db_path}"
         }
     
+    conn = None
     try:
         conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
         # Try ath_tracking table first (preferred — has pre-calculated data)
@@ -248,98 +255,94 @@ def calculate_ath_score(symbol: str, lookback: int = 500) -> dict:
                 ORDER BY rowid DESC LIMIT ?
             """, (lookback,))
             rows = cursor.fetchall()
-        except Exception:
+        except Exception as e:
             rows = []
         
-        if not rows:
-            # Fallback: calculate from price_data_15m highs
+        if rows:
+            # ath_tracking returns tuples (no row_factory), index by position
+            distances = [float(r[0]) for r in rows]
+            current_distance = distances[0]  # Most recent
+            
+            # Percentile: what % of historical distances is current distance >= to
+            percentile = (sum(1 for d in distances if d <= current_distance) / len(distances)) * 100
+            
+            score = _percentile_to_score(percentile)
+            zone = classify_ath_zone(current_distance)
+            
+            conn.close()
+            return {
+                "score": round(score, 4),
+                "percentile": round(percentile, 1),
+                "distance_pct": round(current_distance, 4),
+                "zone": zone,
+                "note": f"{zone}: {current_distance:+.2f}% from ATH ({percentile:.0f}th pctl, {len(distances)} bars)"
+            }
+        
+        # Fallback: calculate from price tables
+        # Try core_15m (XAUJ26 intelligence DB uses this)
+        for table in ['price_data_15m', 'core_15m']:
             try:
-                cursor.execute("""
-                    SELECT high, close FROM price_data_15m
-                    ORDER BY timestamp DESC LIMIT ?
-                """, (lookback,))
-                price_rows = cursor.fetchall()
-                conn.close()
+                # Check what columns exist
+                cursor.execute(f"PRAGMA table_info({table})")
+                cols = [r[1] for r in cursor.fetchall()]
                 
-                if not price_rows or len(price_rows) < 10:
-                    return {
-                        "score": 0.0,
-                        "percentile": 50.0,
-                        "distance_pct": 0.0,
-                        "zone": "INSUFFICIENT_DATA",
-                        "note": f"Only {len(price_rows) if price_rows else 0} bars available"
-                    }
-                
-                import numpy as np
-                highs = np.array([r['high'] for r in reversed(price_rows)])
-                current_close = price_rows[0]['close']  # Most recent
-                
-                ath_data = calculate_ath_data(highs, current_close, lookback)
-                distance_pct = ath_data['ath_distance_pct']
-                
-                # Calculate percentile of current distance within lookback
-                # We need historical distances to rank against
-                distances = []
-                for i in range(min(len(highs), lookback)):
-                    h_slice = highs[:i+1]
-                    local_ath = np.max(h_slice)
-                    if local_ath > 0:
-                        d = ((highs[i] - local_ath) / local_ath) * 100
-                        distances.append(d)
-                
-                if distances:
-                    percentile = (sum(1 for d in distances if d <= distance_pct) / len(distances)) * 100
-                else:
-                    percentile = 50.0
-                
-                score = _percentile_to_score(percentile)
-                zone = classify_ath_zone(distance_pct)
-                
-                return {
-                    "score": round(score, 4),
-                    "percentile": round(percentile, 1),
-                    "distance_pct": round(distance_pct, 4),
-                    "zone": zone,
-                    "note": f"{zone}: {distance_pct:+.2f}% from ATH ({percentile:.0f}th percentile)"
-                }
-                
-            except Exception as e:
-                conn.close()
-                return {
-                    "score": 0.0,
-                    "percentile": 50.0,
-                    "distance_pct": 0.0,
-                    "zone": "ERROR",
-                    "note": f"Price data fallback failed: {e}"
-                }
+                if 'high' in cols and 'close' in cols:
+                    cursor.execute(f"""
+                        SELECT high, close FROM {table}
+                        ORDER BY rowid DESC LIMIT ?
+                    """, (lookback,))
+                    price_rows = cursor.fetchall()
+                    
+                    if price_rows and len(price_rows) >= 10:
+                        import numpy as np
+                        highs = np.array([float(r[0]) for r in reversed(price_rows)])
+                        current_close = float(price_rows[0][1])  # Most recent
+                        
+                        ath_data = calculate_ath_data(highs, current_close, lookback)
+                        distance_pct = ath_data['ath_distance_pct']
+                        
+                        distances = []
+                        for i in range(min(len(highs), lookback)):
+                            h_slice = highs[:i+1]
+                            local_ath = np.max(h_slice)
+                            if local_ath > 0:
+                                d = ((highs[i] - local_ath) / local_ath) * 100
+                                distances.append(d)
+                        
+                        percentile = (sum(1 for d in distances if d <= distance_pct) / len(distances)) * 100 if distances else 50.0
+                        score = _percentile_to_score(percentile)
+                        zone = classify_ath_zone(distance_pct)
+                        
+                        conn.close()
+                        return {
+                            "score": round(score, 4),
+                            "percentile": round(percentile, 1),
+                            "distance_pct": round(distance_pct, 4),
+                            "zone": zone,
+                            "note": f"{zone}: {distance_pct:+.2f}% from ATH (from {table}, {len(price_rows)} bars)"
+                        }
+            except Exception:
+                continue
         
-        # We have ath_tracking rows — calculate percentile
         conn.close()
-        
-        distances = [float(r['ath_distance_pct']) for r in rows]
-        current_distance = distances[0]  # Most recent
-        
-        # Percentile: what % of historical distances is current distance >= to
-        percentile = (sum(1 for d in distances if d <= current_distance) / len(distances)) * 100
-        
-        score = _percentile_to_score(percentile)
-        zone = classify_ath_zone(current_distance)
-        
         return {
-            "score": round(score, 4),
-            "percentile": round(percentile, 1),
-            "distance_pct": round(current_distance, 4),
-            "zone": zone,
-            "note": f"{zone}: {current_distance:+.2f}% from ATH ({percentile:.0f}th percentile)"
+            "score": 0.0,
+            "percentile": 50.0,
+            "distance_pct": 0.0,
+            "zone": "NO_DATA",
+            "note": f"DB exists but no usable price/ATH tables found"
         }
         
     except Exception as e:
+        if conn:
+            conn.close()
+        import traceback
         return {
             "score": 0.0,
             "percentile": 50.0,
             "distance_pct": 0.0,
             "zone": "ERROR",
-            "note": f"ATH calculation error: {e}"
+            "note": f"ATH calculation error: {type(e).__name__}: {e}"
         }
 
 

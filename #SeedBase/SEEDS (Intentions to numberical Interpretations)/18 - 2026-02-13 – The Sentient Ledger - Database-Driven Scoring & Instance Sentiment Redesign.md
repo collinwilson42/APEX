@@ -130,6 +130,29 @@ created_at          TEXT
 - [ ] Test: 15m insert → consensus recalculates against latest 1h
 - [ ] Test: 1h insert → consensus recalculates against latest 15m
 - [ ] Test: cell-tap shows correct weight breakdown
+- [x] Rewrote `apex_sentiment.js` v3.0 — polls DB for real scores instead of mock text ✅ 2026-02-13
+- [x] New scored UI: composite/consensus/signal banner + 5-vector grid with weights ✅ 2026-02-13
+- [x] Updated `apex_sentiment.css` v3.0 — neomorphic scored cards ✅ 2026-02-13
+- [x] Wired `apex_views.js` ACTIVE button to pass instanceId to sentiment panel ✅ 2026-02-13
+- [x] Added `toggleTrading()` to `apex_instances.js` — dispatches torra:activate + starts sentiment ✅ 2026-02-13
+- [x] `torra_trader.py` v2.0 already wired: screenshot → API → ATH → save_sentiment → read verdict ✅
+- [x] `calculate_ath_score()` exists in `ath_calculator.py` ✅
+- [x] Rewired ACTIVE button to use TorraTraderBridge (not old process manager) ✅ 2026-02-13
+- [x] Added `--run-now` flag to torra_trader.py for immediate first tick ✅ 2026-02-13
+- [x] trader_routes.py passes `--run-now` on subprocess spawn ✅ 2026-02-13
+- [x] Removed old Seed 16 process_manager calls from ACTIVE handler ✅ 2026-02-13
+- [x] Fixed orb/clock profile image (image_path vs imagePath key mismatch) ✅ 2026-02-13
+- [x] Removed rank number badge from orb bottom-right ✅ 2026-02-13
+- [x] Synced clock profile selection with ProfileManager.setActiveProfile() ✅ 2026-02-13
+- [x] Created /debug Mission Control page (trader processes, sentiments, instances, event log) ✅ 2026-02-13
+- [x] Registered /debug route in init2.py ✅ 2026-02-13
+- [x] Added `register_instance()` to instance_database.py — accepts pre-existing IDs from frontend ✅ 2026-02-13
+- [x] Fixed /api/instance/<id>/initialize to use register_instance (was creating new IDs!) ✅ 2026-02-13
+- [x] Auto-register instance in trader_routes.py validation if not in DB ✅ 2026-02-13
+- [x] Bridge sends profile_id with trader start request ✅ 2026-02-13
+- [x] Nuked gold rank badges from orb CSS (display: none) ✅ 2026-02-13
+- [ ] Test: Start trader via double-tap → sentiment panel shows real API scores
+- [ ] Test: Intelligence Database Sentiments tab populates from DB
 
 ## 5. Senses (UX/DX)
 

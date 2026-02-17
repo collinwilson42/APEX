@@ -127,43 +127,8 @@
     background: linear-gradient(135deg, #1e2024 0%, #16181b 100%);
 }
 
-/* Rank Badge on Orb */
-.rtc-rank-badge {
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    color: #1a1a1a;
-    border: 2px solid rgba(20, 22, 26, 0.9);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-    z-index: 2;
-}
-
-.rtc-rank--gold {
-    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-}
-
-.rtc-rank--silver {
-    background: linear-gradient(135deg, #C0C0C0 0%, #A0A0A0 100%);
-}
-
-.rtc-rank--bronze {
-    background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
-}
-
-.rtc-rank--matte {
-    background: linear-gradient(145deg, #2a2d32 0%, #1a1c20 100%);
-    color: #9CA3AF;
-    border-color: rgba(255, 255, 255, 0.1);
-}
+/* Rank badges removed from orb (Seed 18) — kept for leaderboard use */
+.rtc-rank-badge { display: none; }
 
 .rtc-orb {
     width: 90px;

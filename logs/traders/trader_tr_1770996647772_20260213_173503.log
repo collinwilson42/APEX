@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "C:\Users\colli\Downloads\#CodeBase\torra_trader.py", line 47, in <module>
+    import mss
+ModuleNotFoundError: No module named 'mss'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\colli\Downloads\#CodeBase\torra_trader.py", line 52, in <module>
+    print("\u26a0\ufe0f  mss not installed: pip install mss")
+  File "C:\Users\colli\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-1: character maps to <undefined>
